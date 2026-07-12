@@ -1,44 +1,48 @@
 # PulseAPI
 
-PulseAPI is an API monitoring dashboard. This repository currently contains only **Phase 1: Project Foundation**: a React/Vite frontend, an Express backend, PostgreSQL connectivity through Prisma, environment validation, structured request logging, centralized errors, and liveness/readiness endpoints.
+PulseAPI is an interview-ready API monitoring dashboard built in deliberately small phases. Phase 2 is complete: the project now includes the Phase 1 foundation plus registration, login, access-token authentication, refresh-token rotation, logout, current-user lookup, and a basic protected React interface.
 
-Authentication, monitor management, outbound API checking, scheduling, incidents, and dashboard data are intentionally not implemented yet.
+Monitor management, outbound API checking, scheduling, incidents, and dashboard statistics are intentionally not implemented yet.
 
 ## Technology stack
 
-- Backend: Node.js 20+, Express 5, JavaScript (ES modules), Prisma ORM, PostgreSQL
-- Frontend: React 19, Vite, JavaScript, Tailwind CSS
+- Backend: Node.js 20+, Express 5, JavaScript ES modules, Prisma ORM, PostgreSQL
+- Frontend: React 19, Vite, JavaScript, React Router, Tailwind CSS
 - Validation: Zod
+- Authentication: bcrypt passwords, JSON Web Tokens, SHA-256 refresh-token storage
+- Security: Helmet, credential-aware CORS, HttpOnly cookies, route rate limiting
 - Logging: Pino JSON logs
-- Tests: Vitest and Supertest
+- Testing: Vitest, Supertest, and a real isolated PostgreSQL schema
+
+JavaScript with React/Vite is the permanent stack for this project. The project does not use Next.js, TypeScript, microservices, Redis, queues, WebSockets, or AI features.
 
 ## Repository structure
 
 ```text
-.
-├── backend/
-│   ├── prisma/{migrations,schema.prisma}
-│   ├── src/
-│   │   ├── common/{errors,middleware,types,utils}/
-│   │   ├── config/
-│   │   ├── modules/{auth,checks,dashboard,incidents,monitors,system}/
-│   │   ├── scheduler/
-│   │   ├── security/
-│   │   ├── app.js
-│   │   └── server.js
-│   └── tests/
-└── frontend/
-    └── src/
-        ├── components/{charts,dashboard,forms,monitors,ui}/
-        ├── config/
-        ├── hooks/
-        ├── lib/
-        ├── pages/{auth,dashboard,incidents,monitors}/
-        ├── styles/
-        └── types/
+backend/
+|-- prisma/
+|   |-- migrations/
+|   `-- schema.prisma
+|-- src/
+|   |-- common/{errors,middleware,types,utils}/
+|   |-- config/
+|   |-- modules/
+|   |   |-- auth/
+|   |   `-- system/
+|   |-- app.js
+|   `-- server.js
+`-- tests/
+
+frontend/
+`-- src/
+    |-- components/auth/
+    |-- config/
+    |-- lib/
+    |-- pages/{auth,dashboard}/
+    `-- styles/
 ```
 
-The empty domain folders preserve the specification's intended modular boundaries without implementing later phases. The frontend structure is the Vite/React JavaScript equivalent of the document's Next.js/TypeScript structure.
+The empty monitor, checking, incident, scheduler, and security-domain folders reserve the specification's later-phase boundaries without implementing those features early.
 
 ## Prerequisites
 
@@ -46,9 +50,9 @@ The empty domain folders preserve the specification's intended modular boundarie
 - npm 10 or newer
 - PostgreSQL 15 or newer
 
-## Exact local setup commands
+## Installation and local setup
 
-Run these commands in PowerShell from the repository root:
+Run from the repository root in PowerShell:
 
 ```powershell
 npm.cmd install
@@ -56,22 +60,22 @@ Copy-Item backend/.env.example backend/.env
 Copy-Item frontend/.env.example frontend/.env
 ```
 
-Create the PostgreSQL database (run this only if it does not already exist):
+Create the database if it does not exist:
 
 ```powershell
 psql -U postgres -c "CREATE DATABASE pulseapi;"
 ```
 
-Update `backend/.env` if your PostgreSQL username, password, host, port, or database name differs. Then generate the Prisma client and apply the current schema state:
+Configure `backend/.env`, then generate Prisma Client and apply migrations:
 
 ```powershell
 npm.cmd run prisma:generate
-npm.cmd run prisma:migrate -- --name phase_1_foundation
+npm.cmd run prisma:migrate -- --name phase_2_authentication
 ```
 
-Because Phase 1 intentionally has no domain models, Prisma may report that the database is already in sync and create no SQL migration. Migrations begin when the first phase-owned models are added.
+If the migration has already been applied, Prisma reports that the database is in sync.
 
-Start both applications:
+Start the frontend and backend:
 
 ```powershell
 npm.cmd run dev
@@ -80,14 +84,7 @@ npm.cmd run dev
 - Frontend: `http://localhost:5173`
 - Backend: `http://localhost:4000`
 - Liveness: `http://localhost:4000/health`
-- Readiness: `http://localhost:4000/ready`
-
-To run the applications separately:
-
-```powershell
-npm.cmd run dev --workspace backend
-npm.cmd run dev --workspace frontend
-```
+- Database readiness: `http://localhost:4000/ready`
 
 ## Environment variables
 
@@ -95,67 +92,145 @@ npm.cmd run dev --workspace frontend
 
 | Variable | Required | Example | Purpose |
 |---|---:|---|---|
-| `DATABASE_URL` | Yes | `postgresql://postgres:postgres@localhost:5432/pulseapi?schema=public` | PostgreSQL connection used by Prisma |
-| `NODE_ENV` | No | `development` | Runtime mode; defaults to `development` |
-| `PORT` | No | `4000` | Express port; defaults to `4000` |
-| `FRONTEND_ORIGIN` | No | `http://localhost:5173` | Allowed browser origin; defaults to the Vite dev server |
-| `LOG_LEVEL` | No | `info` | Pino log level; defaults to `info` |
+| `DATABASE_URL` | Yes | `postgresql://postgres:password@localhost:5432/pulseapi?schema=public` | Prisma PostgreSQL connection |
+| `JWT_ACCESS_SECRET` | Yes | At least 32 random characters | Signs access tokens |
+| `JWT_REFRESH_SECRET` | Yes | A different 32+ character value | Signs refresh tokens |
+| `ACCESS_TOKEN_TTL` | No | `15m` | Access-token lifetime |
+| `REFRESH_TOKEN_TTL_DAYS` | No | `7` | Refresh-token and cookie lifetime |
+| `BCRYPT_ROUNDS` | No | `12` | Password-hash work factor |
+| `NODE_ENV` | No | `development` | Runtime mode |
+| `PORT` | No | `4000` | Express port |
+| `FRONTEND_ORIGIN` | No | `http://localhost:5173` | Browser origin allowed by CORS |
+| `LOG_LEVEL` | No | `info` | Pino log level |
 
-The backend validates these values at startup and exits immediately with a concise error if validation fails. Phase 2 secrets such as JWT keys are not required because authentication is not implemented.
+Generate two different secrets with:
+
+```powershell
+node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"
+```
+
+Run the command twice. Never commit the resulting `.env` file.
 
 ### Frontend (`frontend/.env`)
 
-| Variable | Required | Example | Purpose |
-|---|---:|---|---|
-| `VITE_API_BASE_URL` | Yes | `http://localhost:4000/api/v1` | Base URL reserved for future versioned API calls |
+```env
+VITE_API_BASE_URL=http://localhost:4000/api/v1
+```
 
-Vite exposes only variables prefixed with `VITE_`. The frontend validates this value when it starts or builds.
+Both applications validate their environment at startup/build time.
+
+## Prisma models
+
+### `User`
+
+- UUID primary key
+- Required name and unique normalized email
+- bcrypt password hash
+- Created and updated timestamps
+- One-to-many relationship with refresh tokens
+
+### `RefreshToken`
+
+- UUID primary key
+- User foreign key with cascade deletion
+- Unique SHA-256 token hash
+- Expiration, revocation, and creation timestamps
+- Indexes on `userId` and `expiresAt`
+
+Migration: `20260712124843_phase_2_authentication`.
 
 ## API endpoints
 
-All responses follow the specification's JSON envelope.
+| Method | Path | Purpose | Authentication |
+|---|---|---|---|
+| `GET` | `/health` | Process liveness | None |
+| `GET` | `/ready` | PostgreSQL readiness | None |
+| `POST` | `/api/v1/auth/register` | Create account and session | None |
+| `POST` | `/api/v1/auth/login` | Create session | None |
+| `POST` | `/api/v1/auth/refresh` | Rotate refresh token and return access token | HttpOnly cookie |
+| `POST` | `/api/v1/auth/logout` | Revoke session and clear cookie | Optional cookie |
+| `GET` | `/api/v1/auth/me` | Return current safe user | Bearer access token |
 
-| Method | Path | Purpose | Database query |
-|---|---|---|---:|
-| `GET` | `/health` | Confirms the Express process is alive | No |
-| `GET` | `/ready` | Confirms PostgreSQL is reachable | Yes, lightweight `SELECT 1` through Prisma |
+Success responses use:
 
-Success responses use `{ "success": true, "data": {} }`. Errors use `{ "success": false, "error": { "code": "...", "message": "...", "details": [] } }`.
+```json
+{ "success": true, "data": {} }
+```
 
-## Tests
+Errors use:
 
-The backend tests inject a small database substitute, so they are deterministic and do not need a running PostgreSQL server.
+```json
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Readable message.",
+    "details": []
+  }
+}
+```
+
+## Frontend routes
+
+- `/register`: validated registration form
+- `/login`: validated login form
+- `/app`: protected Phase 2 placeholder with account details and logout
+
+The access token is held in React state and `sessionStorage` for the current browser tab. The raw refresh token is inaccessible to JavaScript because it is stored in an HttpOnly cookie. On reload, the frontend attempts refresh-token rotation and reloads the current user.
+
+## Testing
+
+Run:
 
 ```powershell
 npm.cmd test
 ```
 
+The test setup derives an isolated `pulseapi_test` PostgreSQL schema from `DATABASE_URL`, creates it when necessary, applies committed migrations, and runs repository/API behavior against real Prisma and PostgreSQL. It never deletes development-schema users.
+
 The suite covers:
 
-- `/health` response, ISO timestamp, request ID, and lack of a database query
-- `/ready` success when the database responds
-- `/ready` standard `503` envelope when the database is unavailable
-- Standard `404` error handling for unknown routes
+- Health, readiness success/failure, and centralized `404`
+- Registration success, validation, normalization, and duplicate rejection
+- Login success and indistinguishable unknown-email/incorrect-password failures
+- `/me` with valid, missing, and invalid access tokens
+- Refresh-token rotation and rejection of the rotated token
+- Logout, refresh rejection after logout, and missing-cookie logout
+- Absence of password hashes in responses
+- SHA-256-only refresh-token storage in PostgreSQL
 
-Build the frontend after creating its `.env` file:
+Build the frontend:
 
 ```powershell
 npm.cmd run build
 ```
 
-## Logging and errors
+## Manual authentication test
 
-Each completed request emits one JSON log containing request ID, method, route, status code, duration, and authenticated user ID when a later phase supplies one. The logger never serializes request headers, cookies, tokens, or request bodies.
+1. Run `npm.cmd run dev`.
+2. Confirm `http://localhost:4000/ready` reports `database: connected`.
+3. Open `http://localhost:5173/register` and create an account.
+4. Confirm the browser redirects to `/app` and displays safe account data.
+5. Refresh the page to verify session restoration.
+6. Sign out and confirm `/app` redirects to `/login`.
+7. Sign in again with the registered credentials.
 
-`AppError` represents expected operational failures. The final Express error middleware converts all failures to the standard envelope, logs internal diagnostics, and never sends stack traces or database errors to clients.
+## Security decisions
 
-## Prisma and database scope
+- Passwords are hashed with configurable bcrypt cost and never logged or returned.
+- Unknown-email and incorrect-password login attempts return the same public error.
+- Access tokens last 15 minutes and carry only user ID and token type.
+- Refresh tokens last seven days, use a consistent HttpOnly cookie, and are stored only as SHA-256 hashes.
+- Refresh rotation atomically revokes the previous database record before issuing the replacement.
+- Logout succeeds even without a cookie and revokes a matching stored token when present.
+- Cookies use `SameSite=Lax`; `Secure` is enabled in production.
+- Registration and login have separate IP rate limits outside the test environment.
+- Helmet, credential-aware CORS, a 100 KB JSON limit, sanitized errors, and non-sensitive structured logs remain enabled.
+- User IDs come only from verified access tokens, never request bodies.
 
-Prisma is configured for PostgreSQL and `/ready` verifies the connection through the Prisma client. The schema intentionally contains no domain models in Phase 1. User/authentication models belong to Phase 2; monitor models and related checking data belong to later phases.
+## Known limitations
 
-## Known limitations and manual configuration
-
-- A local or hosted PostgreSQL database and a correct `DATABASE_URL` must be supplied manually.
-- The initial migration command requires PostgreSQL to be running.
-- The frontend is a foundation screen only; product pages and API integration are later-phase work.
-- This phase contains no authentication, monitor CRUD, outbound checks, scheduler, Redis, queues, WebSockets, or AI features.
+- Rate limiting uses process memory, which is appropriate for the current single-instance phase but not distributed deployment.
+- Session management is per refresh token; a future account UI could list and revoke all sessions.
+- HTTPS and production secrets must be configured during deployment.
+- Monitor management and all monitoring behavior begin in later phases.

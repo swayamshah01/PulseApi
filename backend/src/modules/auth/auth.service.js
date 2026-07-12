@@ -49,13 +49,15 @@ export function createAuthService({ database, config }) {
       }
 
       const passwordHash = await bcrypt.hash(input.password, config.BCRYPT_ROUNDS);
-      let user;
-
       try {
-        user = await repository.createUser({
-          name: input.name,
-          email: input.email,
-          passwordHash,
+        return await repository.transaction(async (transactionRepository) => {
+          const user = await transactionRepository.createUser({
+            name: input.name,
+            email: input.email,
+            passwordHash,
+          });
+
+          return issueSession(user, transactionRepository);
         });
       } catch (error) {
         if (error.code === "P2002") {
@@ -68,8 +70,6 @@ export function createAuthService({ database, config }) {
 
         throw error;
       }
-
-      return issueSession(user);
     },
 
     async login(input) {
