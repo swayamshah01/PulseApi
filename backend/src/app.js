@@ -9,6 +9,7 @@ import { logger as defaultLogger } from "./config/logger.js";
 import { prisma } from "./config/prisma.js";
 import { env as defaultEnv } from "./config/env.js";
 import { createAuthRouter } from "./modules/auth/auth.routes.js";
+import { createMonitorRouter } from "./modules/monitors/monitor.routes.js";
 import { createSystemRouter } from "./modules/system/system.routes.js";
 
 export function createApp({
@@ -27,6 +28,10 @@ export function createApp({
   app.use(requestLogger(logger));
   app.use(createSystemRouter(database));
   app.use("/api/v1/auth", createAuthRouter({ database, config: authConfig }));
+  app.use(
+    "/api/v1/monitors",
+    createMonitorRouter({ database, config: authConfig }),
+  );
   app.use(notFound);
   app.use(errorHandler(logger));
 
