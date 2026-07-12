@@ -10,6 +10,7 @@ import { prisma } from "./config/prisma.js";
 import { env as defaultEnv } from "./config/env.js";
 import { createAuthRouter } from "./modules/auth/auth.routes.js";
 import { createCheckService } from "./modules/checks/check.service.js";
+import { createDashboardRouter } from "./modules/dashboard/dashboard.routes.js";
 import { createMonitorRouter } from "./modules/monitors/monitor.routes.js";
 import { createSystemRouter } from "./modules/system/system.routes.js";
 
@@ -39,6 +40,10 @@ export function createApp({
   app.use(
     "/api/v1/monitors",
     createMonitorRouter({ database, config: authConfig, checkService }),
+  );
+  app.use(
+    "/api/v1/dashboard",
+    createDashboardRouter({ database, config: authConfig }),
   );
   app.use(notFound);
   app.use(errorHandler(logger));

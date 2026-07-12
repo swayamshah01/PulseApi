@@ -4,6 +4,44 @@ export function createCheckRepository(database) {
       return database.monitor.findFirst({ where: { id: monitorId, userId } });
     },
 
+    async listResults(monitorId, query) {
+      const checkedAt = {};
+      if (query.from) checkedAt.gte = query.from;
+      if (query.to) checkedAt.lte = query.to;
+      const where = {
+        monitorId,
+        ...(Object.keys(checkedAt).length ? { checkedAt } : {}),
+        ...(query.result === "successful" ? { success: true } : {}),
+        ...(query.result === "failed" ? { success: false } : {}),
+      };
+      const [results, total] = await Promise.all([
+        database.checkResult.findMany({
+          where,
+          orderBy: { checkedAt: "desc" },
+          skip: (query.page - 1) * query.limit,
+          take: query.limit,
+        }),
+        database.checkResult.count({ where }),
+      ]);
+
+      return { results, total };
+    },
+
+    findResultsForStats(monitorId, from) {
+      return database.checkResult.findMany({
+        where: {
+          monitorId,
+          ...(from ? { checkedAt: { gte: from } } : {}),
+        },
+        orderBy: { checkedAt: "asc" },
+        select: {
+          checkedAt: true,
+          success: true,
+          responseTimeMs: true,
+        },
+      });
+    },
+
     async saveResultAndSummary(monitor, result) {
       const nextCheckAt =
         monitor.status === "ACTIVE"

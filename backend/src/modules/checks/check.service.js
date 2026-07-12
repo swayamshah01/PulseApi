@@ -85,5 +85,70 @@ export function createCheckService({ database, logger, httpClient = secureGet })
     isRunning(monitorId) {
       return runningMonitorIds.has(monitorId);
     },
+
+    async getHistory(userId, monitorId, query) {
+      const monitor = await repository.findOwnedMonitor(userId, monitorId);
+      if (!monitor) {
+        throw new AppError(404, "MONITOR_NOT_FOUND", "The requested monitor does not exist.");
+      }
+
+      const { results, total } = await repository.listResults(monitorId, query);
+      return {
+        results: results.map(mapCheckResult),
+        meta: {
+          page: query.page,
+          limit: query.limit,
+          total,
+          totalPages: Math.ceil(total / query.limit),
+        },
+      };
+    },
+
+    async getStats(userId, monitorId, range) {
+      const monitor = await repository.findOwnedMonitor(userId, monitorId);
+      if (!monitor) {
+        throw new AppError(404, "MONITOR_NOT_FOUND", "The requested monitor does not exist.");
+      }
+
+      const rangeMs = {
+        "1h": 60 * 60 * 1000,
+        "24h": 24 * 60 * 60 * 1000,
+        "7d": 7 * 24 * 60 * 60 * 1000,
+        "30d": 30 * 24 * 60 * 60 * 1000,
+      }[range];
+      const from = rangeMs ? new Date(Date.now() - rangeMs) : null;
+      const results = await repository.findResultsForStats(monitorId, from);
+      const successfulChecks = results.filter((result) => result.success).length;
+      const totalChecks = results.length;
+      const responseTimes = results.map((result) => result.responseTimeMs);
+      const bucketMs = range === "1h" ? 5 * 60 * 1000 : range === "30d" || range === "all" ? 24 * 60 * 60 * 1000 : 60 * 60 * 1000;
+      const buckets = new Map();
+
+      for (const result of results) {
+        const timestamp = Math.floor(result.checkedAt.getTime() / bucketMs) * bucketMs;
+        const bucket = buckets.get(timestamp) ?? { total: 0, successful: 0, responseTotal: 0 };
+        bucket.total += 1;
+        bucket.successful += result.success ? 1 : 0;
+        bucket.responseTotal += result.responseTimeMs;
+        buckets.set(timestamp, bucket);
+      }
+
+      return {
+        range,
+        totalChecks,
+        successfulChecks,
+        failedChecks: totalChecks - successfulChecks,
+        uptimePercentage: totalChecks ? Number(((successfulChecks / totalChecks) * 100).toFixed(2)) : null,
+        averageResponseTimeMs: totalChecks ? Math.round(responseTimes.reduce((sum, value) => sum + value, 0) / totalChecks) : null,
+        minimumResponseTimeMs: totalChecks ? Math.min(...responseTimes) : null,
+        maximumResponseTimeMs: totalChecks ? Math.max(...responseTimes) : null,
+        currentStatus: monitor.isUp === null ? "UNKNOWN" : monitor.isUp ? "UP" : "DOWN",
+        series: [...buckets.entries()].map(([timestamp, bucket]) => ({
+          timestamp: new Date(timestamp),
+          averageResponseTimeMs: Math.round(bucket.responseTotal / bucket.total),
+          successRate: Number(((bucket.successful / bucket.total) * 100).toFixed(2)),
+        })),
+      };
+    },
   };
 }

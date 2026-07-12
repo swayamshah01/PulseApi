@@ -80,5 +80,31 @@ export function createMonitorController(service, checkService) {
         return next(error);
       }
     },
+
+    async history(request, response, next) {
+      try {
+        const result = await checkService.getHistory(
+          request.user.id,
+          request.params.monitorId,
+          request.validatedQuery,
+        );
+        return sendSuccess(response, result.results, { meta: result.meta });
+      } catch (error) {
+        return next(error);
+      }
+    },
+
+    async stats(request, response, next) {
+      try {
+        const result = await checkService.getStats(
+          request.user.id,
+          request.params.monitorId,
+          request.validatedQuery.range,
+        );
+        return sendSuccess(response, result);
+      } catch (error) {
+        return next(error);
+      }
+    },
   };
 }

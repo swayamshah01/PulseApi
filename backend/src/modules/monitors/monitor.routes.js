@@ -3,6 +3,10 @@ import { authenticate } from "../../common/middleware/authenticate.js";
 import { createMonitorController } from "./monitor.controller.js";
 import { createMonitorService } from "./monitor.service.js";
 import {
+  validateCheckHistoryQuery,
+  validateCheckStatsQuery,
+} from "../checks/check.schema.js";
+import {
   createMonitorSchema,
   updateMonitorSchema,
   validateMonitorBody,
@@ -27,6 +31,8 @@ export function createMonitorRouter({ database, config, checkService }) {
   router.post("/:monitorId/pause", controller.pause);
   router.post("/:monitorId/resume", controller.resume);
   router.post("/:monitorId/check", controller.check);
+  router.get("/:monitorId/checks", validateCheckHistoryQuery, controller.history);
+  router.get("/:monitorId/stats", validateCheckStatsQuery, controller.stats);
 
   return router;
 }
