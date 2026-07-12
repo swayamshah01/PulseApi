@@ -22,6 +22,8 @@ const networkCodes = new Set([
   "EHOSTUNREACH",
   "ENETUNREACH",
   "EPIPE",
+  "EACCES",
+  "EPERM",
   "UND_ERR_SOCKET",
 ]);
 

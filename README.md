@@ -1,77 +1,76 @@
 # PulseAPI
 
-PulseAPI is an interview-ready API monitoring dashboard built in deliberately small phases. Phase 3 is complete: authenticated users can configure and manage their own HTTP `GET` monitors through the Express API and React interface.
+PulseAPI is a full-stack API uptime monitor. Authenticated users can create HTTP `GET` monitors, run checks immediately, let the backend schedule checks automatically, and inspect uptime, latency, history, and recent failures.
 
-Actual external endpoint checking is intentionally not implemented yet. New monitor health remains unknown (`Not Checked`) until Phase 4.
+The permanent stack is JavaScript throughout:
 
-## Technology stack
+- Backend: Node.js 20+, Express 5, Prisma ORM, PostgreSQL
+- Frontend: React 19, Vite, React Router, Tailwind CSS, Recharts
+- Security: bcrypt, JWT access tokens, rotating HttpOnly refresh cookies, Helmet, CORS, rate limiting, and SSRF protection
+- Operations: node-cron, Pino structured logs, graceful shutdown
+- Testing: Vitest, Supertest, and an isolated PostgreSQL test schema
 
-- Backend: Node.js 20+, Express 5, JavaScript ES modules, Prisma ORM, PostgreSQL
-- Frontend: React 19, Vite, JavaScript, React Router, Tailwind CSS
-- Validation: Zod
-- Authentication: bcrypt, JSON Web Tokens, rotating refresh tokens
-- Security: Helmet, credential-aware CORS, HttpOnly cookies, route rate limiting
-- Logging: Pino JSON logs
-- Testing: Vitest, Supertest, and a real isolated PostgreSQL schema
+The project intentionally does not use TypeScript, Next.js, microservices, Redis, queues, WebSockets, or AI features.
 
-JavaScript with React/Vite is the permanent project stack. The project does not use Next.js, TypeScript, microservices, Redis, queues, WebSockets, or AI features.
+## Screenshots
 
-## Completed features
+![PulseAPI dashboard](docs/screenshots/dashboard.png)
 
-### Phase 1: Foundation
+![Monitor configuration and current health](docs/screenshots/monitor-details.png)
 
-- Express and React/Vite applications
-- Prisma/PostgreSQL connection
-- Environment validation
-- Structured request logging
-- Central errors and response envelopes
-- `/health` and `/ready`
+![Response-time chart and check history](docs/screenshots/monitor-history.png)
 
-### Phase 2: Authentication
+## Completed scope
 
-- Registration and login
-- Bearer access tokens
-- Rotating HttpOnly refresh-token cookie
-- Logout and current-user endpoint
-- Protected frontend routes
+- Phase 1: project foundation, environment validation, logging, errors, health, and readiness
+- Phase 2: registration, login, access/refresh tokens, rotation, logout, and protected frontend routes
+- Phase 3: owned monitor CRUD, pause/resume, filtering, sorting, and limits
+- Phase 4: secure manual HTTP checks, persistence, timing, status comparison, and failure classification
+- Phase 5: automatic due-monitor scheduler with batching, concurrency limits, overlap protection, and restart recovery
+- Phase 6: paginated history, date/result filters, uptime and latency statistics, charts, recent failures, and dashboard summary
 
-### Phase 3: Monitor management
+Incidents, notifications, and alert delivery are outside the completed MVP scope.
 
-- Create, list, view, edit, pause, resume, and delete monitors
-- Per-user ownership on every database operation
-- Maximum 20 monitors per user
-- Pagination, filtering, searching, and sorting
-- Functional dashboard and monitor-management pages
-- Basic URL validation without making external requests
+## Architecture
 
-## Repository structure
+```mermaid
+flowchart LR
+    Browser["React + Vite browser client"] -->|"JSON API + access token"| Express["Express API"]
+    Express --> Auth["Authentication module"]
+    Express --> Monitors["Monitor and analytics modules"]
+    Scheduler["node-cron scheduler"] --> Checks["Check service"]
+    Monitors --> Checks
+    Checks --> Guard["DNS validation + SSRF guard"]
+    Guard --> Target["Public HTTP/HTTPS endpoint"]
+    Auth --> Prisma["Prisma ORM"]
+    Monitors --> Prisma
+    Checks --> Prisma
+    Prisma --> PostgreSQL[(PostgreSQL)]
+```
+
+The API remains a single long-running service because the scheduler and API share the same monitor/check domain. Controllers handle HTTP details, services hold business logic, repositories isolate Prisma queries, and Zod schemas validate input.
 
 ```text
 backend/
-|-- prisma/
-|   |-- migrations/
-|   `-- schema.prisma
+|-- prisma/{migrations,schema.prisma}
 |-- src/
-|   |-- common/{errors,middleware,types,utils}/
-|   |-- config/
-|   |-- modules/
-|   |   |-- auth/
-|   |   |-- monitors/
-|   |   `-- system/
+|   |-- common/{errors,middleware,types,utils}
+|   |-- config
+|   |-- modules/{auth,checks,dashboard,monitors,system}
+|   |-- scheduler
+|   |-- security
 |   |-- app.js
 |   `-- server.js
-`-- tests/
+`-- tests
 
 frontend/
 `-- src/
-    |-- components/{auth,layout,monitors}/
-    |-- config/
-    |-- lib/
-    |-- pages/{auth,dashboard,monitors}/
-    `-- styles/
+    |-- components/{auth,charts,layout,monitors}
+    |-- config
+    |-- lib
+    |-- pages/{auth,dashboard,monitors}
+    `-- styles
 ```
-
-Check execution, results, incidents, and the scheduler remain reserved for later phases.
 
 ## Prerequisites
 
@@ -79,30 +78,25 @@ Check execution, results, incidents, and the scheduler remain reserved for later
 - npm 10 or newer
 - PostgreSQL 15 or newer
 
-## Installation and local setup
+## Exact local installation commands
 
-Run from the repository root in PowerShell:
+Run these commands from the repository root in PowerShell:
 
 ```powershell
 npm.cmd install
 Copy-Item backend/.env.example backend/.env
 Copy-Item frontend/.env.example frontend/.env
-```
-
-Create the PostgreSQL database if necessary:
-
-```powershell
 psql -U postgres -c "CREATE DATABASE pulseapi;"
 ```
 
-Configure `backend/.env`, then run Prisma before starting the development server:
+Edit `backend/.env` with the real PostgreSQL username and password. Then generate Prisma Client and apply every committed migration:
 
 ```powershell
 npm.cmd run prisma:generate
-npm.cmd run prisma:migrate -- --name phase_3_monitor_management
+npm.cmd run prisma:deploy
 ```
 
-Start both applications:
+Start the backend and frontend together:
 
 ```powershell
 npm.cmd run dev
@@ -113,25 +107,39 @@ npm.cmd run dev
 - Liveness: `http://localhost:4000/health`
 - Database readiness: `http://localhost:4000/ready`
 
-On Windows, stop the running backend before regenerating Prisma Client because the process holds Prisma's query-engine DLL open.
+Production-style local commands:
+
+```powershell
+npm.cmd run build
+npm.cmd start --workspace backend
+npm.cmd run preview --workspace frontend
+```
+
+On Windows, stop a running backend before regenerating Prisma Client because the process can hold Prisma's query-engine DLL open.
 
 ## Environment variables
 
 ### Backend (`backend/.env`)
 
-| Variable | Required | Example | Purpose |
-|---|---:|---|---|
-| `DATABASE_URL` | Yes | `postgresql://postgres:password@localhost:5432/pulseapi?schema=public` | PostgreSQL connection |
-| `JWT_ACCESS_SECRET` | Yes | 32+ random characters | Signs access tokens |
-| `JWT_REFRESH_SECRET` | Yes | Different 32+ character value | Signs refresh tokens |
-| `ACCESS_TOKEN_TTL` | No | `15m` | Access-token lifetime |
-| `REFRESH_TOKEN_TTL_DAYS` | No | `7` | Refresh-token lifetime |
-| `BCRYPT_ROUNDS` | No | `12` | Password hashing cost |
-| `MAX_MONITORS_PER_USER` | No | `20` | Per-user monitor limit |
-| `NODE_ENV` | No | `development` | Runtime mode |
-| `PORT` | No | `4000` | Express port |
-| `FRONTEND_ORIGIN` | No | `http://localhost:5173` | Allowed browser origin |
-| `LOG_LEVEL` | No | `info` | Pino log level |
+| Variable | Required | Local value / rule |
+|---|---:|---|
+| `DATABASE_URL` | Yes | `postgresql://postgres:password@localhost:5432/pulseapi?schema=public` |
+| `JWT_ACCESS_SECRET` | Yes | At least 32 random characters |
+| `JWT_REFRESH_SECRET` | Yes | A different value of at least 32 characters |
+| `NODE_ENV` | No | `development`, `test`, or `production`; default `development` |
+| `PORT` | No | Default `4000` |
+| `FRONTEND_ORIGIN` | No | Default `http://localhost:5173`; exact production frontend origin |
+| `LOG_LEVEL` | No | Default `info` |
+| `ACCESS_TOKEN_TTL` | No | Default `15m` |
+| `REFRESH_TOKEN_TTL_DAYS` | No | Default `7` |
+| `BCRYPT_ROUNDS` | No | Default `12` |
+| `MAX_MONITORS_PER_USER` | No | Default `20` |
+| `SCHEDULER_ENABLED` | No | `true` or `false`; default `true` |
+| `SCHEDULER_CRON` | No | Default `* * * * *` |
+| `SCHEDULER_BATCH_SIZE` | No | Default `25` |
+| `SCHEDULER_CONCURRENCY` | No | Default `5` |
+
+Startup fails with a readable validation error if required values are missing or invalid.
 
 ### Frontend (`frontend/.env`)
 
@@ -139,54 +147,38 @@ On Windows, stop the running backend before regenerating Prisma Client because t
 VITE_API_BASE_URL=http://localhost:4000/api/v1
 ```
 
-`.env` files, dependencies, builds, and coverage are ignored by Git.
+Only `.env.example` files are committed. Real `.env` files, dependencies, builds, and coverage are ignored.
 
-## Prisma models and migrations
+## Database
 
-### `User`
+Prisma models:
 
-- UUID primary key
-- Unique normalized email and bcrypt password hash
-- Relationships to refresh tokens and monitors
-
-### `RefreshToken`
-
-- UUID primary key and user foreign key
-- Unique SHA-256 token hash
-- Expiration and revocation timestamps
-
-### `Monitor`
-
-- UUID primary key and required user foreign key with cascade deletion
-- Name, URL, forced `GET` method, expected status, timeout, and interval
-- `ACTIVE` or `PAUSED` status
-- Nullable health/status/latency/last-check summary fields
-- `nextCheckAt`, consecutive failure count, and timestamps
-- Index on `userId`
-- Composite index on `status` and `nextCheckAt`
+- `User`: UUID identity, normalized unique email, bcrypt password hash
+- `RefreshToken`: hashed rotating token, expiry/revocation state, user cascade
+- `Monitor`: owned configuration, scheduling fields, current health summary
+- `CheckResult`: immutable check outcome, timing, status, size, and classified failure
 
 Committed migrations:
 
 - `20260712124843_phase_2_authentication`
 - `20260712132245_phase_3_monitor_management`
+- `20260712204727_phase_4_manual_endpoint_checking`
 
-No `CheckResult` or `Incident` model exists yet.
+Apply migrations without creating a new development migration:
+
+```powershell
+npm.cmd run prisma:deploy
+```
 
 ## API response envelopes
-
-Success:
 
 ```json
 { "success": true, "data": {} }
 ```
 
-Paginated list:
-
 ```json
-{ "success": true, "data": [], "meta": {} }
+{ "success": true, "data": [], "meta": { "page": 1, "limit": 50, "total": 0, "totalPages": 0 } }
 ```
-
-Error:
 
 ```json
 {
@@ -201,139 +193,106 @@ Error:
 
 ## API endpoints
 
-### System and authentication
-
-| Method | Path | Purpose | Authentication |
-|---|---|---|---|
-| `GET` | `/health` | Process liveness | None |
-| `GET` | `/ready` | PostgreSQL readiness | None |
-| `POST` | `/api/v1/auth/register` | Create account and session | None |
-| `POST` | `/api/v1/auth/login` | Create session | None |
-| `POST` | `/api/v1/auth/refresh` | Rotate refresh token | HttpOnly cookie |
-| `POST` | `/api/v1/auth/logout` | Revoke session | Optional cookie |
-| `GET` | `/api/v1/auth/me` | Current user | Bearer token |
-
-### Monitors
-
-All monitor endpoints require `Authorization: Bearer <access-token>`.
-
 | Method | Path | Purpose |
 |---|---|---|
-| `POST` | `/api/v1/monitors` | Create monitor |
+| `GET` | `/health` | Process liveness, independent of PostgreSQL |
+| `GET` | `/ready` | PostgreSQL readiness; returns `503` when unavailable |
+| `POST` | `/api/v1/auth/register` | Register and start a session |
+| `POST` | `/api/v1/auth/login` | Log in |
+| `POST` | `/api/v1/auth/refresh` | Rotate refresh token and issue access token |
+| `POST` | `/api/v1/auth/logout` | Revoke refresh token and clear cookie |
+| `GET` | `/api/v1/auth/me` | Return current user |
+| `POST` | `/api/v1/monitors` | Create a monitor |
 | `GET` | `/api/v1/monitors` | List owned monitors |
-| `GET` | `/api/v1/monitors/:monitorId` | Get owned monitor |
-| `PATCH` | `/api/v1/monitors/:monitorId` | Update editable configuration |
-| `DELETE` | `/api/v1/monitors/:monitorId` | Delete monitor with `204` |
-| `POST` | `/api/v1/monitors/:monitorId/pause` | Pause idempotently |
-| `POST` | `/api/v1/monitors/:monitorId/resume` | Resume idempotently |
+| `GET` | `/api/v1/monitors/:monitorId` | Get an owned monitor |
+| `PATCH` | `/api/v1/monitors/:monitorId` | Update monitor configuration |
+| `DELETE` | `/api/v1/monitors/:monitorId` | Delete monitor and results |
+| `POST` | `/api/v1/monitors/:monitorId/pause` | Pause automatic checks |
+| `POST` | `/api/v1/monitors/:monitorId/resume` | Resume and make due |
+| `POST` | `/api/v1/monitors/:monitorId/check` | Run a secure manual check |
+| `GET` | `/api/v1/monitors/:monitorId/checks` | Paginated check history |
+| `GET` | `/api/v1/monitors/:monitorId/stats` | Uptime and response-time statistics |
+| `GET` | `/api/v1/dashboard/summary` | User-scoped health and recent failures |
 
-Missing and cross-user monitors both return `404 MONITOR_NOT_FOUND`.
+All `/api/v1/monitors` and dashboard routes require `Authorization: Bearer <access-token>`. Missing and cross-user monitors return the same `404 MONITOR_NOT_FOUND` response.
 
-## Monitor validation
+History query parameters:
 
-- Name: trimmed, 2–100 characters
-- URL: absolute HTTP/HTTPS, maximum 2048 characters
-- URL fragments are removed before storage
-- Embedded URL usernames/passwords are rejected
-- Expected status: integer from 100–599, default `200`
-- Timeout: integer from 1000–30000 ms, default `5000`
-- Interval: integer from 60–86400 seconds, default `300`
-- Method is never accepted as configuration and is always stored as `GET`
-- New monitors are `ACTIVE`, have unknown health, and receive `nextCheckAt = now`
+- `page` (default `1`), `limit` (1-100, default `50`)
+- `from` and `to` as ISO date/time values
+- `result=all|successful|failed`
 
-This phase performs only syntactic URL validation. DNS resolution, private-address rejection, redirect checks, and full SSRF protection must be added before Phase 4 sends any request.
+Statistics supports `range=1h|24h|7d|30d|all`, defaulting to `24h`.
 
-## Pagination, filters, and sorting
+## Endpoint checking and scheduler behavior
 
-`GET /api/v1/monitors` supports:
+Each check:
 
-| Parameter | Values |
-|---|---|
-| `page` | Integer, default `1` |
-| `limit` | 1–100, default `10` |
-| `status` | `ACTIVE`, `PAUSED` |
-| `health` | `up`, `down`, `unknown` |
-| `search` | Case-insensitive name/URL search |
-| `sortBy` | `name`, `createdAt`, `updatedAt`, `lastCheckedAt` |
-| `sortOrder` | `asc`, `desc` |
+1. Accepts only HTTP/HTTPS without embedded credentials.
+2. Resolves DNS and rejects localhost, metadata, private, loopback, link-local, multicast, and reserved addresses.
+3. Pins the outbound connection to a validated DNS address to reduce DNS-rebinding risk.
+4. Revalidates every redirect and limits redirects to three.
+5. Performs `GET` with the monitor timeout and a 1 MiB response-body cap.
+6. Measures elapsed time and compares the status to `expectedStatusCode`.
+7. Persists success or failure and atomically updates the monitor summary and `nextCheckAt`.
 
-Metadata contains `page`, `limit`, `total`, and `totalPages`.
+Failures are classified as `TIMEOUT`, `DNS`, `NETWORK`, `SSL`, `INVALID_STATUS`, `BLOCKED_URL`, or `UNKNOWN`. Technical error details are not exposed to clients.
 
-## Authorization behavior
+The scheduler polls every minute by default, selects only active monitors whose `nextCheckAt` is due, limits the batch and concurrent outbound requests, skips an in-flight monitor, and prevents overlapping cycles. It runs one cycle at startup so overdue monitors resume after a restart.
 
-- The authenticated user ID comes only from the verified access token.
-- Body, query, and URL-supplied user IDs are never trusted.
-- Owned-record queries include both monitor ID and authenticated user ID.
-- Update and delete mutations also include both IDs.
-- Cross-user access returns the same `404` as a missing monitor.
-- Public monitor responses omit `userId`.
+## Testing and verification
 
-## Frontend routes
-
-- `/dashboard`: Phase 3 overview without invented statistics
-- `/monitors`: searchable/filterable monitor table and actions
-- `/monitors/new`: validated creation form
-- `/monitors/:monitorId`: configuration and honest monitoring placeholders
-- `/monitors/:monitorId/edit`: permitted settings only
-
-Protected frontend requests attach the access token. On `401`, they attempt refresh-token rotation once; failed refresh clears the local session and redirects to login. Delete actions require browser confirmation.
-
-## Testing
-
-Run:
+The backend suite derives a separate `pulseapi_test` schema from `DATABASE_URL`, applies committed migrations, and verifies real Prisma/PostgreSQL behavior.
 
 ```powershell
 npm.cmd test
-```
-
-The setup derives a separate `pulseapi_test` PostgreSQL schema from `DATABASE_URL`, applies committed migrations, and tests real Prisma/database behavior without touching development records.
-
-The Phase 3 coverage includes:
-
-- Creation, authentication, defaults, forced GET, URL normalization, and validation
-- The 20-monitor limit
-- Strict per-user listing and ownership
-- Pagination metadata
-- Status, health, search, and sorting filters
-- Owned and cross-user retrieval
-- Editable and protected update fields
-- URL/interval rescheduling timestamps
-- Idempotent pause and resume
-- Deletion, post-deletion `404`, and cross-user mutation prevention
-
-Build the frontend:
-
-```powershell
 npm.cmd run build
 ```
 
-## Manual Phase 3 verification
+Coverage includes foundation, authentication, ownership, monitor CRUD, URL/DNS security, real local HTTP transport, redirect handling, all failure classes, persistence, scheduling, concurrency, restart recovery, pagination, filters, statistics, and dashboard scoping.
+
+Manual smoke test:
 
 1. Run `npm.cmd run dev`.
-2. Confirm `/ready` reports `database: connected`.
-3. Register or log in through the frontend.
-4. Open `/monitors/new` and create an HTTP/HTTPS monitor.
-5. Confirm its health is `Not Checked`.
-6. View and edit the monitor.
-7. Pause it and confirm `nextCheckAt` becomes empty.
-8. Resume it and confirm it becomes active without showing check results.
-9. Search/filter it from `/monitors`.
-10. Delete it and confirm the deletion prompt first.
+2. Confirm `/health` and `/ready` return successful JSON envelopes.
+3. Register and create a monitor for `https://example.com/`.
+4. Click **Run check** and confirm the result is persisted.
+5. Wait until the monitor is due and confirm an automatic result appears.
+6. Stop and restart the backend with an overdue active monitor; confirm it runs on startup.
+7. Temporarily stop PostgreSQL and confirm `/health` remains `200` while `/ready` returns `503`.
 
-## Security decisions
+## Deployment with Render
 
-- Passwords and tokens are never logged or returned unsafely.
-- Refresh tokens are stored only as SHA-256 hashes and rotate atomically.
-- Monitor ownership is enforced in repository queries and mutations.
-- Protected monitor fields are discarded rather than written.
-- Basic URL validation stores configuration only; no outbound request exists yet.
-- Helmet, credential-aware CORS, body limits, rate limiting, sanitized errors, and structured logging remain enabled.
+`render.yaml` declares PostgreSQL, a long-running Express service, Prisma migration deployment, and the React static site with the required React Router rewrite.
+
+The scheduler requires an always-running backend. Do not use a service that sleeps when inactive.
+
+1. Push this repository to GitHub or GitLab.
+2. In Render, choose **New > Blueprint** and select the repository.
+3. When prompted, set `FRONTEND_ORIGIN` to the final frontend origin, for example `https://pulseapi-frontend.onrender.com`.
+4. Set frontend `VITE_API_BASE_URL` to the final backend API URL, for example `https://pulseapi-backend.onrender.com/api/v1`.
+5. Apply the Blueprint. If Render assigns different service slugs, update both values and redeploy.
+6. Verify `https://<backend-host>/ready` before registering through the production frontend.
+7. Create the stable demo monitor using `https://<backend-host>/health`, expected status `200`, and an interval of at least `60` seconds.
+8. Leave the production service running for more than one interval and confirm automatic history entries are created.
+
+Production behavior automatically uses secure refresh cookies. `FRONTEND_ORIGIN` must be the exact HTTPS frontend origin for credentialed CORS.
+
+## Security and operational decisions
+
+- Raw passwords and tokens are neither logged nor stored; refresh tokens are SHA-256 hashes in PostgreSQL.
+- Refresh tokens rotate on every refresh and are revoked on logout.
+- Monitor ownership is included in repository lookups and mutations.
+- Request logging excludes bodies, cookies, authorization headers, and tokens.
+- Outbound checks use a separate validated/pinned transport and never trust redirect destinations.
+- Check execution has timeout, redirect, response-size, batch, and concurrency limits.
+- Prisma disconnects and the scheduler stops on `SIGINT` or `SIGTERM`.
+- Rate limiting is process-local, suitable for the current single-backend deployment.
 
 ## Known limitations
 
-- No external endpoint request is made.
-- Monitor health remains unknown until Phase 4.
-- No check-result history, uptime calculation, incidents, alerts, or scheduler exists.
-- Full SSRF protection must be completed before enabling checks.
-- Rate limiting is process-local and intended for the current single-instance phase.
-- HTTPS and production secrets remain deployment responsibilities.
+- Only HTTP `GET` monitors are supported.
+- No incidents, email/SMS/webhook alerts, public status pages, or multi-region probes are included.
+- The scheduler is intentionally single-service/in-memory; deploy only one backend instance unless distributed job locking is added.
+- Uptime represents persisted checks, not a formal SLA calculation.
+- TLS termination, DNS names, provider billing, and production secret ownership require deployment-provider configuration.

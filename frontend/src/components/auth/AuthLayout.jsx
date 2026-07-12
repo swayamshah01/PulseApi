@@ -11,10 +11,10 @@ export function AuthLayout({ eyebrow, title, description, alternate, children })
               Know when your APIs need attention.
             </h1>
             <p className="mt-5 max-w-md text-base leading-7 text-slate-800">
-              Secure account access is ready. Endpoint monitoring arrives in the next phase.
+              Secure, scheduled API monitoring with history and uptime analytics.
             </p>
           </div>
-          <p className="mt-16 text-sm font-semibold">Phase 2 · Authentication</p>
+          <p className="mt-16 text-sm font-semibold">PulseAPI · Monitoring dashboard</p>
         </div>
 
         <div className="p-8 sm:p-12">

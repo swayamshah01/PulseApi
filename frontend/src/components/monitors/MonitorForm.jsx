@@ -107,11 +107,11 @@ export function MonitorForm({ initialValues, onSubmit, submitLabel }) {
         <label className="block sm:col-span-2">
           <span className="text-sm font-semibold">Check interval (seconds)</span>
           <input className={inputClass} type="number" min="60" max="86400" value={form.intervalSeconds} onChange={(event) => update("intervalSeconds", event.target.value)} required />
-          <span className="mt-2 block text-xs text-slate-500">Minimum 60 seconds. Checks are not executed until Phase 4.</span>
+          <span className="mt-2 block text-xs text-slate-500">Minimum 60 seconds. Active monitors are checked automatically.</span>
         </label>
       </div>
       <div className="rounded-xl border border-sky-400/20 bg-sky-400/10 p-4 text-sm text-sky-100">
-        PulseAPI supports GET monitoring only. This phase stores configuration but does not contact the endpoint.
+        PulseAPI supports GET monitoring only. Private and reserved network destinations are blocked.
       </div>
       <button className="rounded-xl bg-emerald-400 px-5 py-3 font-bold text-slate-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={submitting}>
         {submitting ? "Saving..." : submitLabel}

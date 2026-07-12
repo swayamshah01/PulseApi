@@ -108,6 +108,7 @@ describe("manual endpoint checking", () => {
     ["TIMEOUT", { name: "TimeoutError" }],
     ["DNS", { code: "ENOTFOUND" }],
     ["NETWORK", { code: "ECONNREFUSED" }],
+    ["NETWORK", { code: "EACCES" }],
     ["SSL", { code: "CERT_HAS_EXPIRED" }],
   ])("classifies and persists %s failures", async (errorType, properties) => {
     httpBehavior = async () => {

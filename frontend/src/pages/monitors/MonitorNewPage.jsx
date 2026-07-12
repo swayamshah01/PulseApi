@@ -20,7 +20,7 @@ export function MonitorNewPage() {
       <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-8">
         <p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-400">New configuration</p>
         <h1 className="mt-2 text-3xl font-black">Add a monitor</h1>
-        <p className="mt-2 text-slate-400">Define how this endpoint should be checked in a later phase.</p>
+        <p className="mt-2 text-slate-400">Define the endpoint, expected response, timeout, and automatic check interval.</p>
         <div className="mt-8"><MonitorForm onSubmit={createMonitor} submitLabel="Create monitor" /></div>
       </div>
     </main>
