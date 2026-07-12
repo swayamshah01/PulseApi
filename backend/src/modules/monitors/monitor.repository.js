@@ -1,4 +1,10 @@
 export function createMonitorRepository(database) {
+  function findOwned(userId, monitorId) {
+    return database.monitor.findFirst({
+      where: { id: monitorId, userId },
+    });
+  }
+
   function buildWhere(userId, filters = {}) {
     const where = { userId };
 
@@ -40,11 +46,7 @@ export function createMonitorRepository(database) {
       return { monitors, total };
     },
 
-    findOwned(userId, monitorId) {
-      return database.monitor.findFirst({
-        where: { id: monitorId, userId },
-      });
-    },
+    findOwned,
 
     async updateOwned(userId, monitorId, data) {
       const result = await database.monitor.updateMany({
@@ -53,7 +55,7 @@ export function createMonitorRepository(database) {
       });
 
       if (result.count !== 1) return null;
-      return this.findOwned(userId, monitorId);
+      return findOwned(userId, monitorId);
     },
 
     deleteOwned(userId, monitorId) {

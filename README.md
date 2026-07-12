@@ -1,20 +1,48 @@
 # PulseAPI
 
-PulseAPI is an interview-ready API monitoring dashboard built in deliberately small phases. Phase 2 is complete: the project now includes the Phase 1 foundation plus registration, login, access-token authentication, refresh-token rotation, logout, current-user lookup, and a basic protected React interface.
+PulseAPI is an interview-ready API monitoring dashboard built in deliberately small phases. Phase 3 is complete: authenticated users can configure and manage their own HTTP `GET` monitors through the Express API and React interface.
 
-Monitor management, outbound API checking, scheduling, incidents, and dashboard statistics are intentionally not implemented yet.
+Actual external endpoint checking is intentionally not implemented yet. New monitor health remains unknown (`Not Checked`) until Phase 4.
 
 ## Technology stack
 
 - Backend: Node.js 20+, Express 5, JavaScript ES modules, Prisma ORM, PostgreSQL
 - Frontend: React 19, Vite, JavaScript, React Router, Tailwind CSS
 - Validation: Zod
-- Authentication: bcrypt passwords, JSON Web Tokens, SHA-256 refresh-token storage
+- Authentication: bcrypt, JSON Web Tokens, rotating refresh tokens
 - Security: Helmet, credential-aware CORS, HttpOnly cookies, route rate limiting
 - Logging: Pino JSON logs
 - Testing: Vitest, Supertest, and a real isolated PostgreSQL schema
 
-JavaScript with React/Vite is the permanent stack for this project. The project does not use Next.js, TypeScript, microservices, Redis, queues, WebSockets, or AI features.
+JavaScript with React/Vite is the permanent project stack. The project does not use Next.js, TypeScript, microservices, Redis, queues, WebSockets, or AI features.
+
+## Completed features
+
+### Phase 1: Foundation
+
+- Express and React/Vite applications
+- Prisma/PostgreSQL connection
+- Environment validation
+- Structured request logging
+- Central errors and response envelopes
+- `/health` and `/ready`
+
+### Phase 2: Authentication
+
+- Registration and login
+- Bearer access tokens
+- Rotating HttpOnly refresh-token cookie
+- Logout and current-user endpoint
+- Protected frontend routes
+
+### Phase 3: Monitor management
+
+- Create, list, view, edit, pause, resume, and delete monitors
+- Per-user ownership on every database operation
+- Maximum 20 monitors per user
+- Pagination, filtering, searching, and sorting
+- Functional dashboard and monitor-management pages
+- Basic URL validation without making external requests
 
 ## Repository structure
 
@@ -28,6 +56,7 @@ backend/
 |   |-- config/
 |   |-- modules/
 |   |   |-- auth/
+|   |   |-- monitors/
 |   |   `-- system/
 |   |-- app.js
 |   `-- server.js
@@ -35,14 +64,14 @@ backend/
 
 frontend/
 `-- src/
-    |-- components/auth/
+    |-- components/{auth,layout,monitors}/
     |-- config/
     |-- lib/
-    |-- pages/{auth,dashboard}/
+    |-- pages/{auth,dashboard,monitors}/
     `-- styles/
 ```
 
-The empty monitor, checking, incident, scheduler, and security-domain folders reserve the specification's later-phase boundaries without implementing those features early.
+Check execution, results, incidents, and the scheduler remain reserved for later phases.
 
 ## Prerequisites
 
@@ -60,22 +89,20 @@ Copy-Item backend/.env.example backend/.env
 Copy-Item frontend/.env.example frontend/.env
 ```
 
-Create the database if it does not exist:
+Create the PostgreSQL database if necessary:
 
 ```powershell
 psql -U postgres -c "CREATE DATABASE pulseapi;"
 ```
 
-Configure `backend/.env`, then generate Prisma Client and apply migrations:
+Configure `backend/.env`, then run Prisma before starting the development server:
 
 ```powershell
 npm.cmd run prisma:generate
-npm.cmd run prisma:migrate -- --name phase_2_authentication
+npm.cmd run prisma:migrate -- --name phase_3_monitor_management
 ```
 
-If the migration has already been applied, Prisma reports that the database is in sync.
-
-Start the frontend and backend:
+Start both applications:
 
 ```powershell
 npm.cmd run dev
@@ -86,30 +113,25 @@ npm.cmd run dev
 - Liveness: `http://localhost:4000/health`
 - Database readiness: `http://localhost:4000/ready`
 
+On Windows, stop the running backend before regenerating Prisma Client because the process holds Prisma's query-engine DLL open.
+
 ## Environment variables
 
 ### Backend (`backend/.env`)
 
 | Variable | Required | Example | Purpose |
 |---|---:|---|---|
-| `DATABASE_URL` | Yes | `postgresql://postgres:password@localhost:5432/pulseapi?schema=public` | Prisma PostgreSQL connection |
-| `JWT_ACCESS_SECRET` | Yes | At least 32 random characters | Signs access tokens |
-| `JWT_REFRESH_SECRET` | Yes | A different 32+ character value | Signs refresh tokens |
+| `DATABASE_URL` | Yes | `postgresql://postgres:password@localhost:5432/pulseapi?schema=public` | PostgreSQL connection |
+| `JWT_ACCESS_SECRET` | Yes | 32+ random characters | Signs access tokens |
+| `JWT_REFRESH_SECRET` | Yes | Different 32+ character value | Signs refresh tokens |
 | `ACCESS_TOKEN_TTL` | No | `15m` | Access-token lifetime |
-| `REFRESH_TOKEN_TTL_DAYS` | No | `7` | Refresh-token and cookie lifetime |
-| `BCRYPT_ROUNDS` | No | `12` | Password-hash work factor |
+| `REFRESH_TOKEN_TTL_DAYS` | No | `7` | Refresh-token lifetime |
+| `BCRYPT_ROUNDS` | No | `12` | Password hashing cost |
+| `MAX_MONITORS_PER_USER` | No | `20` | Per-user monitor limit |
 | `NODE_ENV` | No | `development` | Runtime mode |
 | `PORT` | No | `4000` | Express port |
-| `FRONTEND_ORIGIN` | No | `http://localhost:5173` | Browser origin allowed by CORS |
+| `FRONTEND_ORIGIN` | No | `http://localhost:5173` | Allowed browser origin |
 | `LOG_LEVEL` | No | `info` | Pino log level |
-
-Generate two different secrets with:
-
-```powershell
-node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"
-```
-
-Run the command twice. Never commit the resulting `.env` file.
 
 ### Frontend (`frontend/.env`)
 
@@ -117,47 +139,54 @@ Run the command twice. Never commit the resulting `.env` file.
 VITE_API_BASE_URL=http://localhost:4000/api/v1
 ```
 
-Both applications validate their environment at startup/build time.
+`.env` files, dependencies, builds, and coverage are ignored by Git.
 
-## Prisma models
+## Prisma models and migrations
 
 ### `User`
 
 - UUID primary key
-- Required name and unique normalized email
-- bcrypt password hash
-- Created and updated timestamps
-- One-to-many relationship with refresh tokens
+- Unique normalized email and bcrypt password hash
+- Relationships to refresh tokens and monitors
 
 ### `RefreshToken`
 
-- UUID primary key
-- User foreign key with cascade deletion
+- UUID primary key and user foreign key
 - Unique SHA-256 token hash
-- Expiration, revocation, and creation timestamps
-- Indexes on `userId` and `expiresAt`
+- Expiration and revocation timestamps
 
-Migration: `20260712124843_phase_2_authentication`.
+### `Monitor`
 
-## API endpoints
+- UUID primary key and required user foreign key with cascade deletion
+- Name, URL, forced `GET` method, expected status, timeout, and interval
+- `ACTIVE` or `PAUSED` status
+- Nullable health/status/latency/last-check summary fields
+- `nextCheckAt`, consecutive failure count, and timestamps
+- Index on `userId`
+- Composite index on `status` and `nextCheckAt`
 
-| Method | Path | Purpose | Authentication |
-|---|---|---|---|
-| `GET` | `/health` | Process liveness | None |
-| `GET` | `/ready` | PostgreSQL readiness | None |
-| `POST` | `/api/v1/auth/register` | Create account and session | None |
-| `POST` | `/api/v1/auth/login` | Create session | None |
-| `POST` | `/api/v1/auth/refresh` | Rotate refresh token and return access token | HttpOnly cookie |
-| `POST` | `/api/v1/auth/logout` | Revoke session and clear cookie | Optional cookie |
-| `GET` | `/api/v1/auth/me` | Return current safe user | Bearer access token |
+Committed migrations:
 
-Success responses use:
+- `20260712124843_phase_2_authentication`
+- `20260712132245_phase_3_monitor_management`
+
+No `CheckResult` or `Incident` model exists yet.
+
+## API response envelopes
+
+Success:
 
 ```json
 { "success": true, "data": {} }
 ```
 
-Errors use:
+Paginated list:
+
+```json
+{ "success": true, "data": [], "meta": {} }
+```
+
+Error:
 
 ```json
 {
@@ -170,13 +199,84 @@ Errors use:
 }
 ```
 
+## API endpoints
+
+### System and authentication
+
+| Method | Path | Purpose | Authentication |
+|---|---|---|---|
+| `GET` | `/health` | Process liveness | None |
+| `GET` | `/ready` | PostgreSQL readiness | None |
+| `POST` | `/api/v1/auth/register` | Create account and session | None |
+| `POST` | `/api/v1/auth/login` | Create session | None |
+| `POST` | `/api/v1/auth/refresh` | Rotate refresh token | HttpOnly cookie |
+| `POST` | `/api/v1/auth/logout` | Revoke session | Optional cookie |
+| `GET` | `/api/v1/auth/me` | Current user | Bearer token |
+
+### Monitors
+
+All monitor endpoints require `Authorization: Bearer <access-token>`.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/v1/monitors` | Create monitor |
+| `GET` | `/api/v1/monitors` | List owned monitors |
+| `GET` | `/api/v1/monitors/:monitorId` | Get owned monitor |
+| `PATCH` | `/api/v1/monitors/:monitorId` | Update editable configuration |
+| `DELETE` | `/api/v1/monitors/:monitorId` | Delete monitor with `204` |
+| `POST` | `/api/v1/monitors/:monitorId/pause` | Pause idempotently |
+| `POST` | `/api/v1/monitors/:monitorId/resume` | Resume idempotently |
+
+Missing and cross-user monitors both return `404 MONITOR_NOT_FOUND`.
+
+## Monitor validation
+
+- Name: trimmed, 2–100 characters
+- URL: absolute HTTP/HTTPS, maximum 2048 characters
+- URL fragments are removed before storage
+- Embedded URL usernames/passwords are rejected
+- Expected status: integer from 100–599, default `200`
+- Timeout: integer from 1000–30000 ms, default `5000`
+- Interval: integer from 60–86400 seconds, default `300`
+- Method is never accepted as configuration and is always stored as `GET`
+- New monitors are `ACTIVE`, have unknown health, and receive `nextCheckAt = now`
+
+This phase performs only syntactic URL validation. DNS resolution, private-address rejection, redirect checks, and full SSRF protection must be added before Phase 4 sends any request.
+
+## Pagination, filters, and sorting
+
+`GET /api/v1/monitors` supports:
+
+| Parameter | Values |
+|---|---|
+| `page` | Integer, default `1` |
+| `limit` | 1–100, default `10` |
+| `status` | `ACTIVE`, `PAUSED` |
+| `health` | `up`, `down`, `unknown` |
+| `search` | Case-insensitive name/URL search |
+| `sortBy` | `name`, `createdAt`, `updatedAt`, `lastCheckedAt` |
+| `sortOrder` | `asc`, `desc` |
+
+Metadata contains `page`, `limit`, `total`, and `totalPages`.
+
+## Authorization behavior
+
+- The authenticated user ID comes only from the verified access token.
+- Body, query, and URL-supplied user IDs are never trusted.
+- Owned-record queries include both monitor ID and authenticated user ID.
+- Update and delete mutations also include both IDs.
+- Cross-user access returns the same `404` as a missing monitor.
+- Public monitor responses omit `userId`.
+
 ## Frontend routes
 
-- `/register`: validated registration form
-- `/login`: validated login form
-- `/app`: protected Phase 2 placeholder with account details and logout
+- `/dashboard`: Phase 3 overview without invented statistics
+- `/monitors`: searchable/filterable monitor table and actions
+- `/monitors/new`: validated creation form
+- `/monitors/:monitorId`: configuration and honest monitoring placeholders
+- `/monitors/:monitorId/edit`: permitted settings only
 
-The access token is held in React state and `sessionStorage` for the current browser tab. The raw refresh token is inaccessible to JavaScript because it is stored in an HttpOnly cookie. On reload, the frontend attempts refresh-token rotation and reloads the current user.
+Protected frontend requests attach the access token. On `401`, they attempt refresh-token rotation once; failed refresh clears the local session and redirects to login. Delete actions require browser confirmation.
 
 ## Testing
 
@@ -186,18 +286,20 @@ Run:
 npm.cmd test
 ```
 
-The test setup derives an isolated `pulseapi_test` PostgreSQL schema from `DATABASE_URL`, creates it when necessary, applies committed migrations, and runs repository/API behavior against real Prisma and PostgreSQL. It never deletes development-schema users.
+The setup derives a separate `pulseapi_test` PostgreSQL schema from `DATABASE_URL`, applies committed migrations, and tests real Prisma/database behavior without touching development records.
 
-The suite covers:
+The Phase 3 coverage includes:
 
-- Health, readiness success/failure, and centralized `404`
-- Registration success, validation, normalization, and duplicate rejection
-- Login success and indistinguishable unknown-email/incorrect-password failures
-- `/me` with valid, missing, and invalid access tokens
-- Refresh-token rotation and rejection of the rotated token
-- Logout, refresh rejection after logout, and missing-cookie logout
-- Absence of password hashes in responses
-- SHA-256-only refresh-token storage in PostgreSQL
+- Creation, authentication, defaults, forced GET, URL normalization, and validation
+- The 20-monitor limit
+- Strict per-user listing and ownership
+- Pagination metadata
+- Status, health, search, and sorting filters
+- Owned and cross-user retrieval
+- Editable and protected update fields
+- URL/interval rescheduling timestamps
+- Idempotent pause and resume
+- Deletion, post-deletion `404`, and cross-user mutation prevention
 
 Build the frontend:
 
@@ -205,32 +307,33 @@ Build the frontend:
 npm.cmd run build
 ```
 
-## Manual authentication test
+## Manual Phase 3 verification
 
 1. Run `npm.cmd run dev`.
-2. Confirm `http://localhost:4000/ready` reports `database: connected`.
-3. Open `http://localhost:5173/register` and create an account.
-4. Confirm the browser redirects to `/app` and displays safe account data.
-5. Refresh the page to verify session restoration.
-6. Sign out and confirm `/app` redirects to `/login`.
-7. Sign in again with the registered credentials.
+2. Confirm `/ready` reports `database: connected`.
+3. Register or log in through the frontend.
+4. Open `/monitors/new` and create an HTTP/HTTPS monitor.
+5. Confirm its health is `Not Checked`.
+6. View and edit the monitor.
+7. Pause it and confirm `nextCheckAt` becomes empty.
+8. Resume it and confirm it becomes active without showing check results.
+9. Search/filter it from `/monitors`.
+10. Delete it and confirm the deletion prompt first.
 
 ## Security decisions
 
-- Passwords are hashed with configurable bcrypt cost and never logged or returned.
-- Unknown-email and incorrect-password login attempts return the same public error.
-- Access tokens last 15 minutes and carry only user ID and token type.
-- Refresh tokens last seven days, use a consistent HttpOnly cookie, and are stored only as SHA-256 hashes.
-- Refresh rotation atomically revokes the previous database record before issuing the replacement.
-- Logout succeeds even without a cookie and revokes a matching stored token when present.
-- Cookies use `SameSite=Lax`; `Secure` is enabled in production.
-- Registration and login have separate IP rate limits outside the test environment.
-- Helmet, credential-aware CORS, a 100 KB JSON limit, sanitized errors, and non-sensitive structured logs remain enabled.
-- User IDs come only from verified access tokens, never request bodies.
+- Passwords and tokens are never logged or returned unsafely.
+- Refresh tokens are stored only as SHA-256 hashes and rotate atomically.
+- Monitor ownership is enforced in repository queries and mutations.
+- Protected monitor fields are discarded rather than written.
+- Basic URL validation stores configuration only; no outbound request exists yet.
+- Helmet, credential-aware CORS, body limits, rate limiting, sanitized errors, and structured logging remain enabled.
 
 ## Known limitations
 
-- Rate limiting uses process memory, which is appropriate for the current single-instance phase but not distributed deployment.
-- Session management is per refresh token; a future account UI could list and revoke all sessions.
-- HTTPS and production secrets must be configured during deployment.
-- Monitor management and all monitoring behavior begin in later phases.
+- No external endpoint request is made.
+- Monitor health remains unknown until Phase 4.
+- No check-result history, uptime calculation, incidents, alerts, or scheduler exists.
+- Full SSRF protection must be completed before enabling checks.
+- Rate limiting is process-local and intended for the current single-instance phase.
+- HTTPS and production secrets remain deployment responsibilities.
