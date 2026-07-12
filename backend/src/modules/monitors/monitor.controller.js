@@ -1,6 +1,6 @@
 import { sendSuccess } from "../../common/utils/responses.js";
 
-export function createMonitorController(service) {
+export function createMonitorController(service, checkService) {
   return {
     async create(request, response, next) {
       try {
@@ -64,6 +64,18 @@ export function createMonitorController(service) {
       try {
         const monitor = await service.resume(request.user.id, request.params.monitorId);
         return sendSuccess(response, monitor);
+      } catch (error) {
+        return next(error);
+      }
+    },
+
+    async check(request, response, next) {
+      try {
+        const result = await checkService.runManualCheck(
+          request.user.id,
+          request.params.monitorId,
+        );
+        return sendSuccess(response, result);
       } catch (error) {
         return next(error);
       }

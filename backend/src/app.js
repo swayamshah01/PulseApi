@@ -9,6 +9,7 @@ import { logger as defaultLogger } from "./config/logger.js";
 import { prisma } from "./config/prisma.js";
 import { env as defaultEnv } from "./config/env.js";
 import { createAuthRouter } from "./modules/auth/auth.routes.js";
+import { createCheckService } from "./modules/checks/check.service.js";
 import { createMonitorRouter } from "./modules/monitors/monitor.routes.js";
 import { createSystemRouter } from "./modules/system/system.routes.js";
 
@@ -17,8 +18,15 @@ export function createApp({
   logger = defaultLogger,
   frontendOrigin,
   authConfig = defaultEnv,
+  checkHttpClient,
 } = {}) {
   const app = express();
+  const checkService = createCheckService({
+    database,
+    logger,
+    httpClient: checkHttpClient,
+  });
+  app.locals.checkService = checkService;
 
   app.disable("x-powered-by");
   app.use(helmet());
@@ -30,7 +38,7 @@ export function createApp({
   app.use("/api/v1/auth", createAuthRouter({ database, config: authConfig }));
   app.use(
     "/api/v1/monitors",
-    createMonitorRouter({ database, config: authConfig }),
+    createMonitorRouter({ database, config: authConfig, checkService }),
   );
   app.use(notFound);
   app.use(errorHandler(logger));

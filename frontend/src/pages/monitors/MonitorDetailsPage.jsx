@@ -16,6 +16,8 @@ export function MonitorDetailsPage() {
   const [monitor, setMonitor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [latestResult, setLatestResult] = useState(null);
   const [error, setError] = useState(null);
 
   async function loadMonitor() {
@@ -58,6 +60,22 @@ export function MonitorDetailsPage() {
     }
   }
 
+  async function runCheck() {
+    setChecking(true);
+    setError(null);
+    try {
+      const result = await request(`/monitors/${monitor.id}/check`, {
+        method: "POST",
+      });
+      setLatestResult(result);
+      setMonitor(await request(`/monitors/${monitor.id}`));
+    } catch (requestError) {
+      setError(requestError);
+    } finally {
+      setChecking(false);
+    }
+  }
+
   if (loading) return <main className="mx-auto max-w-5xl px-6 py-10 text-slate-400">Loading monitor...</main>;
 
   if (!monitor) {
@@ -90,9 +108,10 @@ export function MonitorDetailsPage() {
             <a className="mt-3 block break-all text-sm text-sky-300 hover:text-sky-200" href={monitor.url} target="_blank" rel="noreferrer">{monitor.url}</a>
           </div>
           <div className="flex flex-wrap gap-2">
+            <button className="rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-emerald-300 disabled:opacity-50" onClick={runCheck} disabled={busy || checking}>{checking ? "Checking..." : "Run check"}</button>
             <Link className="rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-bold hover:border-slate-500" to={`/monitors/${monitor.id}/edit`}>Edit</Link>
-            <button className="rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-bold hover:border-slate-500 disabled:opacity-50" onClick={toggleStatus} disabled={busy}>{monitor.status === "ACTIVE" ? "Pause" : "Resume"}</button>
-            <button className="rounded-xl border border-rose-500/30 px-4 py-2.5 text-sm font-bold text-rose-300 hover:border-rose-400 disabled:opacity-50" onClick={deleteMonitor} disabled={busy}>Delete</button>
+            <button className="rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-bold hover:border-slate-500 disabled:opacity-50" onClick={toggleStatus} disabled={busy || checking}>{monitor.status === "ACTIVE" ? "Pause" : "Resume"}</button>
+            <button className="rounded-xl border border-rose-500/30 px-4 py-2.5 text-sm font-bold text-rose-300 hover:border-rose-400 disabled:opacity-50" onClick={deleteMonitor} disabled={busy || checking}>Delete</button>
           </div>
         </div>
 
@@ -106,9 +125,20 @@ export function MonitorDetailsPage() {
         </dl>
       </section>
 
-      <section className="mt-6 rounded-2xl border border-dashed border-slate-700 p-8">
-        <h2 className="font-bold">Monitoring data</h2>
-        <p className="mt-2 text-slate-400">No checks have been run. Response history, uptime, and incidents are intentionally unavailable until later phases.</p>
+      <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-8">
+        <h2 className="font-bold">Latest manual check</h2>
+        {latestResult ? (
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            <div><p className="text-xs uppercase text-slate-500">Result</p><p className={`mt-1 font-bold ${latestResult.success ? "text-emerald-300" : "text-rose-300"}`}>{latestResult.success ? "Successful" : "Failed"}</p></div>
+            <div><p className="text-xs uppercase text-slate-500">Status</p><p className="mt-1 font-bold">{latestResult.statusCode ?? latestResult.errorType}</p></div>
+            <div><p className="text-xs uppercase text-slate-500">Response time</p><p className="mt-1 font-bold">{latestResult.responseTimeMs} ms</p></div>
+            {latestResult.errorMessage && <p className="text-sm text-slate-400 sm:col-span-3">{latestResult.errorMessage}</p>}
+          </div>
+        ) : monitor.lastCheckedAt ? (
+          <p className="mt-2 text-slate-400">Last checked {formatDateTime(monitor.lastCheckedAt)}. Open history after Phase 6 to inspect every result.</p>
+        ) : (
+          <p className="mt-2 text-slate-400">No checks have been run yet.</p>
+        )}
       </section>
     </main>
   );

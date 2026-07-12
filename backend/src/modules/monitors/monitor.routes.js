@@ -9,10 +9,10 @@ import {
   validateMonitorListQuery,
 } from "./monitor.schema.js";
 
-export function createMonitorRouter({ database, config }) {
+export function createMonitorRouter({ database, config, checkService }) {
   const router = Router();
   const service = createMonitorService({ database, config });
-  const controller = createMonitorController(service);
+  const controller = createMonitorController(service, checkService);
 
   router.use(authenticate(config));
   router.post("/", validateMonitorBody(createMonitorSchema), controller.create);
@@ -26,6 +26,7 @@ export function createMonitorRouter({ database, config }) {
   router.delete("/:monitorId", controller.delete);
   router.post("/:monitorId/pause", controller.pause);
   router.post("/:monitorId/resume", controller.resume);
+  router.post("/:monitorId/check", controller.check);
 
   return router;
 }
