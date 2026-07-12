@@ -20,9 +20,11 @@ export async function apiRequest(path, { accessToken, ...options } = {}) {
       ...options.headers,
     },
   });
-  const body = await response.json();
+  const body = response.status === 204 ? null : await response.json();
 
-  if (!response.ok || !body.success) {
+  if (response.status === 204) return null;
+
+  if (!response.ok || !body?.success) {
     throw new ApiError(
       body.error ?? {
         code: "REQUEST_FAILED",
@@ -32,5 +34,7 @@ export async function apiRequest(path, { accessToken, ...options } = {}) {
     );
   }
 
-  return body.data;
+  return body.meta === undefined
+    ? body.data
+    : { data: body.data, meta: body.meta };
 }

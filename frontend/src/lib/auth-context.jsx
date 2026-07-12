@@ -82,6 +82,29 @@ export function AuthProvider({ children }) {
     }
   }
 
+  async function authenticatedRequest(path, options = {}) {
+    try {
+      return await apiRequest(path, { ...options, accessToken });
+    } catch (error) {
+      if (error.status !== 401) throw error;
+
+      try {
+        const refreshed = await apiRequest("/auth/refresh", { method: "POST" });
+        saveAccessToken(refreshed.accessToken);
+        setAccessToken(refreshed.accessToken);
+        return await apiRequest(path, {
+          ...options,
+          accessToken: refreshed.accessToken,
+        });
+      } catch (refreshError) {
+        saveAccessToken(null);
+        setAccessToken(null);
+        setUser(null);
+        throw refreshError;
+      }
+    }
+  }
+
   const value = useMemo(
     () => ({
       accessToken,
@@ -90,6 +113,7 @@ export function AuthProvider({ children }) {
       login: (credentials) => authenticate("login", credentials),
       register: (details) => authenticate("register", details),
       logout,
+      request: authenticatedRequest,
     }),
     [accessToken, user, loading],
   );
