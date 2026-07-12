@@ -7,6 +7,7 @@ const app = createApp({
   database: prisma,
   logger,
   frontendOrigin: env.FRONTEND_ORIGIN,
+  authConfig: env,
 });
 
 const server = app.listen(env.PORT, () => {
@@ -30,4 +31,3 @@ async function shutdown(signal) {
 
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
-
