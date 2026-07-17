@@ -1,6 +1,14 @@
 # PulseAPI
 
+[![Node.js 20+](https://img.shields.io/badge/Node.js-20%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![JavaScript](https://img.shields.io/badge/JavaScript-ES%20Modules-F7DF1E?logo=javascript&logoColor=black)](https://developer.mozilla.org/docs/Web/JavaScript)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15%2B-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+![Tests](https://img.shields.io/badge/tests-100%20passing-brightgreen)
+![Status](https://img.shields.io/badge/status-MVP%20complete-22c55e)
+
 PulseAPI is a full-stack API uptime monitor. Authenticated users can create HTTP `GET` monitors, run checks immediately, let the backend schedule checks automatically, and inspect uptime, latency, history, and recent failures.
+
+Repository: [github.com/swayamshah01/PulseApi](https://github.com/swayamshah01/PulseApi)
 
 The permanent stack is JavaScript throughout:
 
@@ -11,6 +19,33 @@ The permanent stack is JavaScript throughout:
 - Testing: Vitest, Supertest, and an isolated PostgreSQL test schema
 
 The project intentionally does not use TypeScript, Next.js, microservices, Redis, queues, WebSockets, or AI features.
+
+## Project status
+
+The Phase 1-6 MVP is feature-complete and verified locally. The repository includes a Render Blueprint for PostgreSQL, a continuously running Express backend, Prisma migrations, and the React static frontend. A public production URL is not listed until deployment and post-deployment checks are complete.
+
+Verified on July 13, 2026:
+
+- 100 backend tests passing against an isolated PostgreSQL schema
+- Frontend production build passing
+- Prisma schema valid with all committed migrations applied
+- Real manual public endpoint check returning HTTP 200
+- Real scheduled endpoint check returning HTTP 200
+
+## Contents
+
+- [Screenshots](#screenshots)
+- [Completed scope](#completed-scope)
+- [Architecture](#architecture)
+- [Quick start](#quick-start)
+- [Environment variables](#environment-variables)
+- [Database](#database)
+- [API endpoints](#api-endpoints)
+- [Endpoint checking and scheduler](#endpoint-checking-and-scheduler-behavior)
+- [Testing](#testing-and-verification)
+- [Production deployment](#production-deployment-with-render)
+- [Security](#security-and-operational-decisions)
+- [Known limitations](#known-limitations)
 
 ## Screenshots
 
@@ -78,7 +113,7 @@ frontend/
 - npm 10 or newer
 - PostgreSQL 15 or newer
 
-## Exact local installation commands
+## Quick start
 
 Run these commands from the repository root in PowerShell:
 
@@ -116,6 +151,12 @@ npm.cmd run preview --workspace frontend
 ```
 
 On Windows, stop a running backend before regenerating Prisma Client because the process can hold Prisma's query-engine DLL open.
+
+Generate independent production secrets with Node.js; run the command twice and use a different result for each JWT secret:
+
+```powershell
+node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"
+```
 
 ## Environment variables
 
@@ -224,6 +265,32 @@ History query parameters:
 
 Statistics supports `range=1h|24h|7d|30d|all`, defaulting to `24h`.
 
+### Minimal API example
+
+Register and save the returned `data.accessToken`:
+
+```bash
+curl -X POST http://localhost:4000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Demo User","email":"demo@example.com","password":"StrongPassword123!"}'
+```
+
+Create a monitor using that access token:
+
+```bash
+curl -X POST http://localhost:4000/api/v1/monitors \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <access-token>" \
+  -d '{"name":"Example API","url":"https://example.com/","expectedStatusCode":200,"timeoutMs":5000,"intervalSeconds":300}'
+```
+
+Run it immediately:
+
+```bash
+curl -X POST http://localhost:4000/api/v1/monitors/<monitor-id>/check \
+  -H "Authorization: Bearer <access-token>"
+```
+
 ## Endpoint checking and scheduler behavior
 
 Each check:
@@ -251,6 +318,15 @@ npm.cmd run build
 
 Coverage includes foundation, authentication, ownership, monitor CRUD, URL/DNS security, real local HTTP transport, redirect handling, all failure classes, persistence, scheduling, concurrency, restart recovery, pagination, filters, statistics, and dashboard scoping.
 
+| Check | Verified result |
+|---|---|
+| Backend integration suite | 7 files, 100 tests passed |
+| Frontend production build | Passed |
+| Prisma validation | Passed |
+| Migration status | Database schema up to date |
+| Manual outbound check | HTTP 200 persisted |
+| Automatic scheduled check | HTTP 200 persisted |
+
 Manual smoke test:
 
 1. Run `npm.cmd run dev`.
@@ -261,7 +337,7 @@ Manual smoke test:
 6. Stop and restart the backend with an overdue active monitor; confirm it runs on startup.
 7. Temporarily stop PostgreSQL and confirm `/health` remains `200` while `/ready` returns `503`.
 
-## Deployment with Render
+## Production deployment with Render
 
 `render.yaml` declares PostgreSQL, a long-running Express service, Prisma migration deployment, and the React static site with the required React Router rewrite.
 
@@ -277,6 +353,21 @@ The scheduler requires an always-running backend. Do not use a service that slee
 8. Leave the production service running for more than one interval and confirm automatic history entries are created.
 
 Production behavior automatically uses secure refresh cookies. `FRONTEND_ORIGIN` must be the exact HTTPS frontend origin for credentialed CORS.
+
+### Production launch checklist
+
+- [ ] Repository pushed with a clean working tree and passing tests
+- [ ] PostgreSQL provisioned with backups appropriate for the deployment tier
+- [ ] `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` generated independently
+- [ ] `FRONTEND_ORIGIN` set to the exact HTTPS frontend origin
+- [ ] `VITE_API_BASE_URL` set before the frontend production build
+- [ ] Prisma migrations completed successfully during deployment
+- [ ] `/health` returns `200` and `/ready` confirms PostgreSQL connectivity
+- [ ] Registration, login, refresh rotation, logout, and CORS tested from the production frontend
+- [ ] Manual and scheduled checks verified against a stable public endpoint
+- [ ] Backend configured as a single always-running instance
+- [ ] Logs reviewed to confirm credentials, cookies, and request bodies are not exposed
+- [ ] Deployment URLs and verification date added to this README
 
 ## Security and operational decisions
 
