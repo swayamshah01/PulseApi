@@ -38,6 +38,7 @@ const monitorUrlSchema = z
   });
 
 const monitorFields = {
+  projectId: z.string().uuid(),
   name: z.string().trim().min(2).max(100),
   url: monitorUrlSchema,
   expectedStatusCode: z.number().int().min(100).max(599),
@@ -46,6 +47,7 @@ const monitorFields = {
 };
 
 export const createMonitorSchema = z.object({
+  projectId: monitorFields.projectId.optional(),
   name: monitorFields.name,
   url: monitorFields.url,
   expectedStatusCode: monitorFields.expectedStatusCode.default(200),
@@ -56,6 +58,7 @@ export const createMonitorSchema = z.object({
 export const updateMonitorSchema = z
   .object({
     name: monitorFields.name.optional(),
+    projectId: monitorFields.projectId.optional(),
     url: monitorFields.url.optional(),
     expectedStatusCode: monitorFields.expectedStatusCode.optional(),
     timeoutMs: monitorFields.timeoutMs.optional(),
@@ -71,6 +74,7 @@ const listMonitorSchema = z.object({
   status: z.enum(allowedStatuses).optional(),
   health: z.enum(["up", "down", "unknown"]).optional(),
   search: z.string().trim().max(2048).optional(),
+  projectId: monitorFields.projectId.optional(),
   sortBy: z.enum(allowedSortFields).default("createdAt"),
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });

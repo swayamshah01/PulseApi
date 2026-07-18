@@ -5,7 +5,8 @@ export function createDashboardService(database) {
 
   return {
     async getSummary(userId) {
-      const [monitors, groups, recentFailures] = await Promise.all([
+      const [projectCount, monitors, groups, recentFailures] = await Promise.all([
+        repository.countProjects(userId),
         repository.getMonitors(userId),
         repository.getCheckGroups(userId),
         repository.getRecentFailures(userId),
@@ -24,6 +25,7 @@ export function createDashboardService(database) {
       );
 
       return {
+        projectCount,
         counts: {
           total: monitors.length,
           active: monitors.filter((monitor) => monitor.status === "ACTIVE").length,
@@ -39,6 +41,8 @@ export function createDashboardService(database) {
           id: result.id.toString(),
           monitorId: result.monitorId,
           monitorName: result.monitor.name,
+          endpointName: result.monitor.name,
+          project: result.monitor.project,
           checkedAt: result.checkedAt,
           statusCode: result.statusCode,
           responseTimeMs: result.responseTimeMs,

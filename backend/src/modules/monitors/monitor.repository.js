@@ -2,12 +2,14 @@ export function createMonitorRepository(database) {
   function findOwned(userId, monitorId) {
     return database.monitor.findFirst({
       where: { id: monitorId, userId },
+      include: { project: { select: { id: true, name: true } } },
     });
   }
 
   function buildWhere(userId, filters = {}) {
     const where = { userId };
 
+    if (filters.projectId) where.projectId = filters.projectId;
     if (filters.status) where.status = filters.status;
     if (filters.health === "up") where.isUp = true;
     if (filters.health === "down") where.isUp = false;
@@ -28,7 +30,26 @@ export function createMonitorRepository(database) {
     },
 
     create(userId, data) {
-      return database.monitor.create({ data: { ...data, userId } });
+      return database.monitor.create({
+        data: { ...data, userId },
+        include: { project: { select: { id: true, name: true } } },
+      });
+    },
+
+    findOwnedProject(userId, projectId) {
+      return database.project.findFirst({ where: { id: projectId, userId } });
+    },
+
+    getOrCreateImportedProject(userId) {
+      return database.project.upsert({
+        where: { userId_name: { userId, name: "Imported endpoints" } },
+        update: {},
+        create: {
+          userId,
+          name: "Imported endpoints",
+          description: "Endpoints created through the legacy monitor API.",
+        },
+      });
     },
 
     async list(userId, query) {
@@ -39,6 +60,7 @@ export function createMonitorRepository(database) {
           skip: (query.page - 1) * query.limit,
           take: query.limit,
           orderBy: { [query.sortBy]: query.sortOrder },
+          include: { project: { select: { id: true, name: true } } },
         }),
         database.monitor.count({ where }),
       ]);

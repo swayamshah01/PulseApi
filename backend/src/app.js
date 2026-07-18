@@ -12,6 +12,7 @@ import { createAuthRouter } from "./modules/auth/auth.routes.js";
 import { createCheckService } from "./modules/checks/check.service.js";
 import { createDashboardRouter } from "./modules/dashboard/dashboard.routes.js";
 import { createMonitorRouter } from "./modules/monitors/monitor.routes.js";
+import { createProjectRouter } from "./modules/projects/project.routes.js";
 import { createSystemRouter } from "./modules/system/system.routes.js";
 
 export function createApp({
@@ -40,6 +41,14 @@ export function createApp({
   app.use(
     "/api/v1/monitors",
     createMonitorRouter({ database, config: authConfig, checkService }),
+  );
+  app.use(
+    "/api/v1/endpoints",
+    createMonitorRouter({ database, config: authConfig, checkService }),
+  );
+  app.use(
+    "/api/v1/projects",
+    createProjectRouter({ database, config: authConfig }),
   );
   app.use(
     "/api/v1/dashboard",

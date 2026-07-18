@@ -8,6 +8,7 @@ import { createAccessToken } from "../src/modules/auth/auth.tokens.js";
 const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 const app = createApp({ database: prisma, logger, authConfig: env });
 let user;
+let project;
 let monitor;
 let authorization;
 
@@ -27,13 +28,15 @@ async function createResult(overrides = {}, targetMonitor = monitor) {
 beforeEach(async () => {
   await prisma.checkResult.deleteMany();
   await prisma.monitor.deleteMany();
+  await prisma.project.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.user.deleteMany();
   user = await prisma.user.create({
     data: { name: "Analytics Owner", email: "analytics@example.com", passwordHash: "unused" },
   });
+  project = await prisma.project.create({ data: { userId: user.id, name: "Analytics project" } });
   monitor = await prisma.monitor.create({
-    data: { userId: user.id, name: "Analytics API", url: "https://analytics.example.com", nextCheckAt: new Date() },
+    data: { userId: user.id, projectId: project.id, name: "Analytics API", url: "https://analytics.example.com", nextCheckAt: new Date() },
   });
   authorization = `Bearer ${createAccessToken(user.id, env)}`;
 });
@@ -135,7 +138,7 @@ describe("monitor statistics", () => {
 describe("dashboard summary", () => {
   it("returns user-scoped counts, average uptime, and recent failures", async () => {
     const second = await prisma.monitor.create({
-      data: { userId: user.id, name: "Second API", url: "https://second.example.com", status: "PAUSED", isUp: true },
+      data: { userId: user.id, projectId: project.id, name: "Second API", url: "https://second.example.com", status: "PAUSED", isUp: true },
     });
     await prisma.monitor.update({ where: { id: monitor.id }, data: { isUp: false } });
     await createResult({ success: true }, monitor);
@@ -146,8 +149,11 @@ describe("dashboard summary", () => {
     const other = await prisma.user.create({
       data: { name: "Other", email: "dashboard-other@example.com", passwordHash: "unused" },
     });
+    const otherProject = await prisma.project.create({
+      data: { userId: other.id, name: "Other project" },
+    });
     const otherMonitor = await prisma.monitor.create({
-      data: { userId: other.id, name: "Private Other", url: "https://other.example.com" },
+      data: { userId: other.id, projectId: otherProject.id, name: "Private Other", url: "https://other.example.com" },
     });
     await createResult({ success: false, errorType: "TIMEOUT" }, otherMonitor);
 

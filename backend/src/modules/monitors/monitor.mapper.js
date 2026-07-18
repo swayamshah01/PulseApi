@@ -1,6 +1,8 @@
 export function mapMonitor(monitor) {
   return {
     id: monitor.id,
+    projectId: monitor.projectId,
+    project: monitor.project ?? undefined,
     name: monitor.name,
     url: monitor.url,
     method: monitor.method,

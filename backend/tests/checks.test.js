@@ -22,6 +22,7 @@ const app = createApp({
 });
 
 let user;
+let project;
 let monitor;
 let authorization;
 
@@ -29,9 +30,13 @@ async function seed() {
   user = await prisma.user.create({
     data: { name: "Check Owner", email: "checks@example.com", passwordHash: "unused" },
   });
+  project = await prisma.project.create({
+    data: { userId: user.id, name: "Checks project" },
+  });
   monitor = await prisma.monitor.create({
     data: {
       userId: user.id,
+      projectId: project.id,
       name: "Checked API",
       url: "https://api.example.com/health",
       expectedStatusCode: 200,
@@ -52,6 +57,7 @@ function runCheck(id = monitor.id, bearer = authorization) {
 beforeEach(async () => {
   await prisma.checkResult.deleteMany();
   await prisma.monitor.deleteMany();
+  await prisma.project.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.user.deleteMany();
   httpBehavior = async () => ({ statusCode: 200, responseSizeBytes: 42 });

@@ -27,6 +27,7 @@ const validMonitor = {
 };
 
 let user;
+let project;
 let authorization;
 
 async function createUser(email = "owner@example.com") {
@@ -51,9 +52,17 @@ function createMonitor(input = validMonitor, bearer = authorization) {
 }
 
 async function seedMonitor(ownerId = user.id, overrides = {}) {
+  const ownerProject = ownerId === user.id
+    ? project
+    : await prisma.project.upsert({
+        where: { userId_name: { userId: ownerId, name: "Test project" } },
+        update: {},
+        create: { userId: ownerId, name: "Test project" },
+      });
   return prisma.monitor.create({
     data: {
       userId: ownerId,
+      projectId: ownerProject.id,
       name: "Seeded Monitor",
       url: "https://seed.example.com/",
       nextCheckAt: new Date(),
@@ -64,9 +73,11 @@ async function seedMonitor(ownerId = user.id, overrides = {}) {
 
 beforeEach(async () => {
   await prisma.monitor.deleteMany();
+  await prisma.project.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.user.deleteMany();
   user = await createUser();
+  project = await prisma.project.create({ data: { userId: user.id, name: "Test project" } });
   authorization = bearerFor(user.id);
 });
 
@@ -179,6 +190,7 @@ describe("monitor management API", () => {
     await prisma.monitor.createMany({
       data: Array.from({ length: 20 }, (_, index) => ({
         userId: user.id,
+        projectId: project.id,
         name: `Monitor ${index + 1}`,
         url: `https://limit-${index + 1}.example.com/`,
       })),

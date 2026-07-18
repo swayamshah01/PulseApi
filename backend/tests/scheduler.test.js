@@ -5,6 +5,7 @@ import { createCheckService } from "../src/modules/checks/check.service.js";
 
 const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 let user;
+let project;
 
 function config(overrides = {}) {
   return {
@@ -20,6 +21,7 @@ async function seedMonitor(overrides = {}) {
   return prisma.monitor.create({
     data: {
       userId: user.id,
+      projectId: project.id,
       name: `Scheduled ${Math.random()}`,
       url: "https://scheduled.example.com/",
       status: "ACTIVE",
@@ -32,12 +34,14 @@ async function seedMonitor(overrides = {}) {
 beforeEach(async () => {
   await prisma.checkResult.deleteMany();
   await prisma.monitor.deleteMany();
+  await prisma.project.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.user.deleteMany();
   vi.clearAllMocks();
   user = await prisma.user.create({
     data: { name: "Scheduler Owner", email: "scheduler@example.com", passwordHash: "unused" },
   });
+  project = await prisma.project.create({ data: { userId: user.id, name: "Scheduler project" } });
 });
 
 afterAll(async () => {

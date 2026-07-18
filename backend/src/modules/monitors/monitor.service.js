@@ -23,8 +23,19 @@ export function createMonitorService({ database, config }) {
         );
       }
 
+      const requestedProjectId = input.projectId;
+      const project = requestedProjectId
+        ? await repository.findOwnedProject(userId, requestedProjectId)
+        : await repository.getOrCreateImportedProject(userId);
+      if (!project) {
+        throw new AppError(404, "PROJECT_NOT_FOUND", "The requested project does not exist.");
+      }
+
+      const { projectId: _projectId, ...endpointInput } = input;
+
       const monitor = await repository.create(userId, {
-        ...input,
+        ...endpointInput,
+        projectId: project.id,
         method: "GET",
         status: "ACTIVE",
         isUp: null,
@@ -58,6 +69,13 @@ export function createMonitorService({ database, config }) {
     async update(userId, monitorId, input) {
       const current = await repository.findOwned(userId, monitorId);
       if (!current) throw notFoundError();
+
+      if (input.projectId !== undefined) {
+        const project = await repository.findOwnedProject(userId, input.projectId);
+        if (!project) {
+          throw new AppError(404, "PROJECT_NOT_FOUND", "The requested project does not exist.");
+        }
+      }
 
       const changes = { ...input };
       const schedulingChanged =
