@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { FormError } from "../../components/auth/FormError.jsx";
+import { LiveRefreshBadge } from "../../components/layout/LiveRefreshBadge.jsx";
 import { useAuth } from "../../lib/auth-context.jsx";
 import { formatDateTime, formatInterval, healthClass, healthLabel } from "../../lib/formatters.js";
+import { useAutoRefresh } from "../../lib/use-auto-refresh.js";
 
 export function ProjectDetailsPage() {
   const { projectId } = useParams();
@@ -30,6 +32,7 @@ export function ProjectDetailsPage() {
     }
   }
   useEffect(() => { load(); }, [projectId]);
+  useAutoRefresh(load);
 
   async function toggle(endpoint) {
     setBusyId(endpoint.id);
@@ -63,7 +66,10 @@ export function ProjectDetailsPage() {
       <section className="mt-5 rounded-2xl border border-slate-800 bg-slate-900 p-8">
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-400">Project</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-400">Project</p>
+              <LiveRefreshBadge />
+            </div>
             <h1 className="mt-2 text-4xl font-black">{project.name}</h1>
             <p className="mt-3 max-w-2xl text-slate-400">{project.description || "No description provided."}</p>
           </div>

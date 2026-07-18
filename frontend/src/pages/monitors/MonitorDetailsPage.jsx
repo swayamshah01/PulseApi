@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { FormError } from "../../components/auth/FormError.jsx";
 import { ResponseTimeChart } from "../../components/charts/ResponseTimeChart.jsx";
+import { LiveRefreshBadge } from "../../components/layout/LiveRefreshBadge.jsx";
 import { useAuth } from "../../lib/auth-context.jsx";
 import {
   formatDateTime,
@@ -9,6 +10,7 @@ import {
   healthClass,
   healthLabel,
 } from "../../lib/formatters.js";
+import { useAutoRefresh } from "../../lib/use-auto-refresh.js";
 
 export function MonitorDetailsPage() {
   const { monitorId } = useParams();
@@ -48,6 +50,7 @@ export function MonitorDetailsPage() {
   useEffect(() => {
     loadData();
   }, [monitorId, historyPage, historyResult, statsRange]);
+  useAutoRefresh(() => loadData(false));
 
   async function toggleStatus() {
     setBusy(true);
@@ -121,6 +124,7 @@ export function MonitorDetailsPage() {
               <h1 className="text-3xl font-black">{monitor.name}</h1>
               <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${monitor.status === "ACTIVE" ? "bg-emerald-400/15 text-emerald-300" : "bg-amber-400/15 text-amber-200"}`}>{monitor.status}</span>
               <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${healthClass(monitor.isUp)}`}>{healthLabel(monitor.isUp)}</span>
+              <LiveRefreshBadge />
             </div>
             <a className="mt-3 block break-all text-sm text-sky-300 hover:text-sky-200" href={monitor.url} target="_blank" rel="noreferrer">{monitor.url}</a>
           </div>

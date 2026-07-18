@@ -50,6 +50,7 @@ Verified on July 18, 2026:
 - Phase 5: automatic scheduling with batching, concurrency limits, overlap protection, and restart recovery
 - Phase 6: paginated history, filters, uptime and latency statistics, charts, failures, and dashboard summary
 - Project hierarchy: owned Projects group multiple independently scheduled Endpoints
+- Live monitoring UI: visible operational screens refresh every 10 seconds and immediately when the tab regains focus
 
 Incidents, notification delivery, and public status pages are outside the current MVP.
 
@@ -310,6 +311,8 @@ Each endpoint check:
 Failures are classified as `TIMEOUT`, `DNS`, `NETWORK`, `SSL`, `INVALID_STATUS`, `BLOCKED_URL`, or `UNKNOWN`. Internal technical details are not returned to clients.
 
 The scheduler polls every minute by default, selects active endpoints whose `nextCheckAt` is due, limits batch size and concurrency, skips in-flight endpoints, and prevents overlapping cycles. A cycle runs at startup so overdue checks resume after a restart.
+
+The dashboard, project portfolio, project details, and endpoint analytics request fresh data every 10 seconds while visible. Hidden tabs do not generate background traffic; returning to the tab triggers an immediate refresh. API GET requests use `no-store` so browser caching cannot leave monitoring data stale.
 
 ## Testing and verification
 

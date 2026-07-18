@@ -1,17 +1,27 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { FormError } from "../../components/auth/FormError.jsx";
+import { LiveRefreshBadge } from "../../components/layout/LiveRefreshBadge.jsx";
 import { useAuth } from "../../lib/auth-context.jsx";
 import { formatDateTime } from "../../lib/formatters.js";
+import { useAutoRefresh } from "../../lib/use-auto-refresh.js";
 
 export function DashboardPage() {
   const { user, request } = useAuth();
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    request("/dashboard/summary").then(setSummary).catch(setError);
-  }, []);
+  async function loadSummary() {
+    try {
+      setSummary(await request("/dashboard/summary"));
+      setError(null);
+    } catch (requestError) {
+      setError(requestError);
+    }
+  }
+
+  useEffect(() => { loadSummary(); }, []);
+  useAutoRefresh(loadSummary);
 
   const cards = summary
     ? [
@@ -28,7 +38,10 @@ export function DashboardPage() {
     <main className="mx-auto max-w-7xl px-6 py-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-400">Live overview</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-400">Live overview</p>
+            <LiveRefreshBadge />
+          </div>
           <h1 className="mt-2 text-4xl font-black tracking-tight">Welcome, {user.name}</h1>
           <p className="mt-3 text-slate-400">Project health, endpoint uptime, and recent failures in one place.</p>
         </div>

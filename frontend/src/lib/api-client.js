@@ -13,6 +13,7 @@ export class ApiError extends Error {
 export async function apiRequest(path, { accessToken, ...options } = {}) {
   const response = await fetch(`${env.apiBaseUrl}${path}`, {
     ...options,
+    cache: options.cache ?? "no-store",
     credentials: "include",
     headers: {
       ...(options.body ? { "Content-Type": "application/json" } : {}),

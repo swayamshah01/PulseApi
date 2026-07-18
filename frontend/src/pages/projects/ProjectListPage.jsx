@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { FormError } from "../../components/auth/FormError.jsx";
+import { LiveRefreshBadge } from "../../components/layout/LiveRefreshBadge.jsx";
 import { useAuth } from "../../lib/auth-context.jsx";
 import { formatDateTime } from "../../lib/formatters.js";
+import { useAutoRefresh } from "../../lib/use-auto-refresh.js";
 
 const healthStyles = {
   UP: "bg-emerald-400/15 text-emerald-300",
@@ -23,22 +25,24 @@ export function ProjectListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
+  async function loadProjects(showLoading = true) {
+    if (showLoading) setLoading(true);
+    setError(null);
     const params = new URLSearchParams({ page: String(page), limit: "12", sortBy: "updatedAt", sortOrder: "desc" });
     if (search) params.set("search", search);
-    request(`/projects?${params}`)
-      .then((result) => {
-        if (active) {
-          setProjects(result.data);
-          setMeta(result.meta);
-        }
-      })
-      .catch((requestError) => active && setError(requestError))
-      .finally(() => active && setLoading(false));
-    return () => { active = false; };
-  }, [page, search]);
+    try {
+      const result = await request(`/projects?${params}`);
+      setProjects(result.data);
+      setMeta(result.meta);
+    } catch (requestError) {
+      setError(requestError);
+    } finally {
+      if (showLoading) setLoading(false);
+    }
+  }
+
+  useEffect(() => { loadProjects(); }, [page, search]);
+  useAutoRefresh(() => loadProjects(false));
 
   function applySearch(event) {
     event.preventDefault();
@@ -50,7 +54,10 @@ export function ProjectListPage() {
     <main className="mx-auto max-w-7xl px-6 py-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-400">API portfolio</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-400">API portfolio</p>
+            <LiveRefreshBadge />
+          </div>
           <h1 className="mt-2 text-4xl font-black">Projects</h1>
           <p className="mt-3 text-slate-400">Group every endpoint belonging to the same application.</p>
         </div>
