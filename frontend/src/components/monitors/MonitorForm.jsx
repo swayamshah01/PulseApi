@@ -41,7 +41,7 @@ export function MonitorForm({ initialValues, onSubmit, submitLabel }) {
     setError(null);
 
     if (form.name.trim().length < 2) {
-      setError({ message: "Monitor name must contain at least two characters." });
+      setError({ message: "Endpoint name must contain at least two characters." });
       return;
     }
     if (!urlPreview) {
@@ -86,7 +86,7 @@ export function MonitorForm({ initialValues, onSubmit, submitLabel }) {
       <FormError error={error} />
       <div className="grid gap-6 sm:grid-cols-2">
         <label className="block sm:col-span-2">
-          <span className="text-sm font-semibold">Monitor name</span>
+          <span className="text-sm font-semibold">Endpoint name</span>
           <input className={inputClass} value={form.name} onChange={(event) => update("name", event.target.value)} maxLength={100} required />
         </label>
         <label className="block sm:col-span-2">
@@ -107,7 +107,7 @@ export function MonitorForm({ initialValues, onSubmit, submitLabel }) {
         <label className="block sm:col-span-2">
           <span className="text-sm font-semibold">Check interval (seconds)</span>
           <input className={inputClass} type="number" min="60" max="86400" value={form.intervalSeconds} onChange={(event) => update("intervalSeconds", event.target.value)} required />
-          <span className="mt-2 block text-xs text-slate-500">Minimum 60 seconds. Active monitors are checked automatically.</span>
+          <span className="mt-2 block text-xs text-slate-500">Minimum 60 seconds. Active endpoints are checked automatically.</span>
         </label>
       </div>
       <div className="rounded-xl border border-sky-400/20 bg-sky-400/10 p-4 text-sm text-sky-100">

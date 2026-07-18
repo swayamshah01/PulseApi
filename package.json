@@ -12,7 +12,9 @@
     "build": "npm run build --workspace frontend",
     "prisma:generate": "npm run prisma:generate --workspace backend",
     "prisma:migrate": "npm run prisma:migrate --workspace backend",
-    "prisma:deploy": "npm run prisma:deploy --workspace backend"
+    "prisma:deploy": "npm run prisma:deploy --workspace backend",
+    "prisma:validate": "npm run prisma:validate --workspace backend",
+    "prisma:status": "npm run prisma:status --workspace backend"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

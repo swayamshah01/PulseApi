@@ -36,7 +36,7 @@ services:
         value: 7
       - key: BCRYPT_ROUNDS
         value: 12
-      - key: MAX_MONITORS_PER_USER
+      - key: MAX_ENDPOINTS_PER_USER
         value: 20
       - key: LOG_LEVEL
         value: info

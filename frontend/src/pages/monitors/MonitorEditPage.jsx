@@ -15,7 +15,7 @@ export function MonitorEditPage() {
   useEffect(() => {
     async function load() {
       try {
-        setMonitor(await request(`/monitors/${monitorId}`));
+        setMonitor(await request(`/endpoints/${monitorId}`));
       } catch (requestError) {
         setError(requestError);
       } finally {
@@ -26,14 +26,14 @@ export function MonitorEditPage() {
   }, [monitorId]);
 
   async function updateMonitor(payload) {
-    const updated = await request(`/monitors/${monitorId}`, {
+    const updated = await request(`/endpoints/${monitorId}`, {
       method: "PATCH",
       body: JSON.stringify(payload),
     });
-    navigate(`/monitors/${updated.id}`, { replace: true });
+    navigate(`/endpoints/${updated.id}`, { replace: true });
   }
 
-  if (loading) return <main className="mx-auto max-w-3xl px-6 py-10 text-slate-400">Loading monitor...</main>;
+  if (loading) return <main className="mx-auto max-w-3xl px-6 py-10 text-slate-400">Loading endpoint...</main>;
 
   if (!monitor) {
     return <main className="mx-auto max-w-3xl px-6 py-10"><FormError error={error} /></main>;
@@ -41,10 +41,10 @@ export function MonitorEditPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
-      <Link className="text-sm font-semibold text-slate-400 hover:text-white" to={`/monitors/${monitor.id}`}>← Back to monitor</Link>
+      <Link className="text-sm font-semibold text-slate-400 hover:text-white" to={`/endpoints/${monitor.id}`}>← Back to endpoint</Link>
       <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-8">
         <p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-400">Configuration</p>
-        <h1 className="mt-2 text-3xl font-black">Edit {monitor.name}</h1>
+        <h1 className="mt-2 text-3xl font-black">Edit endpoint: {monitor.name}</h1>
         <p className="mt-2 text-slate-400">Health and historical fields cannot be edited.</p>
         <div className="mt-8">
           <MonitorForm

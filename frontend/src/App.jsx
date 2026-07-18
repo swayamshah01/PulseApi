@@ -7,8 +7,11 @@ import { RegisterPage } from "./pages/auth/RegisterPage.jsx";
 import { DashboardPage } from "./pages/dashboard/DashboardPage.jsx";
 import { MonitorDetailsPage } from "./pages/monitors/MonitorDetailsPage.jsx";
 import { MonitorEditPage } from "./pages/monitors/MonitorEditPage.jsx";
-import { MonitorListPage } from "./pages/monitors/MonitorListPage.jsx";
 import { MonitorNewPage } from "./pages/monitors/MonitorNewPage.jsx";
+import { ProjectDetailsPage } from "./pages/projects/ProjectDetailsPage.jsx";
+import { ProjectEditPage } from "./pages/projects/ProjectEditPage.jsx";
+import { ProjectListPage } from "./pages/projects/ProjectListPage.jsx";
+import { ProjectNewPage } from "./pages/projects/ProjectNewPage.jsx";
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -31,8 +34,15 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/monitors" element={<MonitorListPage />} />
-          <Route path="/monitors/new" element={<MonitorNewPage />} />
+          <Route path="/projects" element={<ProjectListPage />} />
+          <Route path="/projects/new" element={<ProjectNewPage />} />
+          <Route path="/projects/:projectId" element={<ProjectDetailsPage />} />
+          <Route path="/projects/:projectId/edit" element={<ProjectEditPage />} />
+          <Route path="/projects/:projectId/endpoints/new" element={<MonitorNewPage />} />
+          <Route path="/endpoints/:monitorId" element={<MonitorDetailsPage />} />
+          <Route path="/endpoints/:monitorId/edit" element={<MonitorEditPage />} />
+          <Route path="/monitors" element={<Navigate to="/projects" replace />} />
+          <Route path="/monitors/new" element={<Navigate to="/projects" replace />} />
           <Route path="/monitors/:monitorId" element={<MonitorDetailsPage />} />
           <Route path="/monitors/:monitorId/edit" element={<MonitorEditPage />} />
         </Route>

@@ -18,7 +18,7 @@ const envSchema = z.object({
   ACCESS_TOKEN_TTL: z.string().min(2).default("15m"),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(30).default(7),
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
-  MAX_MONITORS_PER_USER: z.coerce.number().int().min(1).max(1000).default(20),
+  MAX_ENDPOINTS_PER_USER: z.coerce.number().int().min(1).max(1000).default(20),
   SCHEDULER_ENABLED: z
     .enum(["true", "false"])
     .default("true")

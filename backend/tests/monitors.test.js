@@ -197,7 +197,7 @@ describe("monitor management API", () => {
     });
 
     const response = await createMonitor().expect(409);
-    expect(response.body.error.code).toBe("MONITOR_LIMIT_REACHED");
+    expect(response.body.error.code).toBe("ENDPOINT_LIMIT_REACHED");
     expect(await prisma.monitor.count({ where: { userId: user.id } })).toBe(20);
   });
 

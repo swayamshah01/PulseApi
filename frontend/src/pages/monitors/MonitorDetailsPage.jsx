@@ -31,9 +31,9 @@ export function MonitorDetailsPage() {
     setError(null);
     try {
       const [monitorData, historyData, statsData] = await Promise.all([
-        request(`/monitors/${monitorId}`),
-        request(`/monitors/${monitorId}/checks?page=${historyPage}&limit=10&result=${historyResult}`),
-        request(`/monitors/${monitorId}/stats?range=${statsRange}`),
+        request(`/endpoints/${monitorId}`),
+        request(`/endpoints/${monitorId}/checks?page=${historyPage}&limit=10&result=${historyResult}`),
+        request(`/endpoints/${monitorId}/stats?range=${statsRange}`),
       ]);
       setMonitor(monitorData);
       setHistory(historyData);
@@ -53,7 +53,7 @@ export function MonitorDetailsPage() {
     setBusy(true);
     try {
       const action = monitor.status === "ACTIVE" ? "pause" : "resume";
-      setMonitor(await request(`/monitors/${monitor.id}/${action}`, { method: "POST" }));
+      setMonitor(await request(`/endpoints/${monitor.id}/${action}`, { method: "POST" }));
     } catch (requestError) {
       setError(requestError);
     } finally {
@@ -65,8 +65,8 @@ export function MonitorDetailsPage() {
     if (!window.confirm(`Delete "${monitor.name}" and all check history? This cannot be undone.`)) return;
     setBusy(true);
     try {
-      await request(`/monitors/${monitor.id}`, { method: "DELETE" });
-      navigate("/monitors", { replace: true });
+      await request(`/endpoints/${monitor.id}`, { method: "DELETE" });
+      navigate(`/projects/${monitor.projectId}`, { replace: true });
     } catch (requestError) {
       setError(requestError);
       setBusy(false);
@@ -77,7 +77,7 @@ export function MonitorDetailsPage() {
     setChecking(true);
     setError(null);
     try {
-      setLatestResult(await request(`/monitors/${monitor.id}/check`, { method: "POST" }));
+      setLatestResult(await request(`/endpoints/${monitor.id}/check`, { method: "POST" }));
       await loadData(false);
     } catch (requestError) {
       setError(requestError);
@@ -86,8 +86,8 @@ export function MonitorDetailsPage() {
     }
   }
 
-  if (loading) return <main className="mx-auto max-w-6xl px-6 py-10 text-slate-400">Loading monitor analytics...</main>;
-  if (!monitor) return <main className="mx-auto max-w-6xl px-6 py-10"><FormError error={error} /><Link className="mt-5 inline-block text-emerald-400" to="/monitors">Back to monitors</Link></main>;
+  if (loading) return <main className="mx-auto max-w-6xl px-6 py-10 text-slate-400">Loading endpoint analytics...</main>;
+  if (!monitor) return <main className="mx-auto max-w-6xl px-6 py-10"><FormError error={error} /><Link className="mt-5 inline-block text-emerald-400" to="/projects">Back to projects</Link></main>;
 
   const details = [
     ["Method", monitor.method],
@@ -111,7 +111,7 @@ export function MonitorDetailsPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
-      <Link className="text-sm font-semibold text-slate-400 hover:text-white" to="/monitors">← Back to monitors</Link>
+      <Link className="text-sm font-semibold text-slate-400 hover:text-white" to={`/projects/${monitor.projectId}`}>← Back to {monitor.project?.name || "project"}</Link>
       <div className="mt-6"><FormError error={error} /></div>
 
       <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-8">
@@ -126,7 +126,7 @@ export function MonitorDetailsPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <button className="rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-emerald-300 disabled:opacity-50" onClick={runCheck} disabled={busy || checking}>{checking ? "Checking..." : "Run check"}</button>
-            <Link className="rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-bold hover:border-slate-500" to={`/monitors/${monitor.id}/edit`}>Edit</Link>
+            <Link className="rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-bold hover:border-slate-500" to={`/endpoints/${monitor.id}/edit`}>Edit</Link>
             <button className="rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-bold hover:border-slate-500 disabled:opacity-50" onClick={toggleStatus} disabled={busy || checking}>{monitor.status === "ACTIVE" ? "Pause" : "Resume"}</button>
             <button className="rounded-xl border border-rose-500/30 px-4 py-2.5 text-sm font-bold text-rose-300 hover:border-rose-400 disabled:opacity-50" onClick={deleteMonitor} disabled={busy || checking}>Delete</button>
           </div>

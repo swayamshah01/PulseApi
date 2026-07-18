@@ -31,7 +31,7 @@ export function AppShell() {
             </NavLink>
             <nav className="flex items-center gap-2" aria-label="Primary navigation">
               <NavLink to="/dashboard" className={navClass}>Dashboard</NavLink>
-              <NavLink to="/monitors" className={navClass}>Monitors</NavLink>
+              <NavLink to="/projects" className={navClass}>Projects</NavLink>
             </nav>
           </div>
           <div className="flex items-center gap-4">

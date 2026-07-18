@@ -43,7 +43,7 @@ export function RegisterPage() {
     <AuthLayout
       eyebrow="Get started"
       title="Create your account"
-      description="Create an account to configure monitors, run checks, and review uptime history."
+      description="Create an account to organize projects, add endpoints, and review uptime history."
       alternate={{ text: "Already registered?", label: "Sign in", to: "/login" }}
     >
       <form className="space-y-5" onSubmit={handleSubmit} noValidate>

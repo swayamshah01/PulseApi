@@ -15,11 +15,11 @@ export function createMonitorService({ database, config }) {
     async create(userId, input) {
       const count = await repository.countForUser(userId);
 
-      if (count >= config.MAX_MONITORS_PER_USER) {
+      if (count >= config.MAX_ENDPOINTS_PER_USER) {
         throw new AppError(
           409,
-          "MONITOR_LIMIT_REACHED",
-          `A maximum of ${config.MAX_MONITORS_PER_USER} monitors is allowed per user.`,
+          "ENDPOINT_LIMIT_REACHED",
+          `A maximum of ${config.MAX_ENDPOINTS_PER_USER} endpoints is allowed per user.`,
         );
       }
 

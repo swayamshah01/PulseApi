@@ -13,7 +13,9 @@
     "test:watch": "vitest",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:deploy": "prisma migrate deploy"
+    "prisma:deploy": "prisma migrate deploy",
+    "prisma:validate": "prisma validate",
+    "prisma:status": "prisma migrate status"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
